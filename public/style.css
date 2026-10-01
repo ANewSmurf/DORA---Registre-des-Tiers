@@ -68,7 +68,6 @@ code, .code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monosp
 .main { min-width: 0; display: flex; flex-direction: column; }
 .topbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 24px; background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 5; }
 .topbar .who { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.menu-btn { display: none; }
 .content { padding: 24px; max-width: 1400px; width: 100%; }
 .page-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
 
@@ -90,6 +89,8 @@ code, .code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monosp
 .btn.primary { background: var(--primary); border-color: var(--primary); color: var(--primary-text); }
 .btn.primary:hover { filter: brightness(1.08); }
 .btn.danger { color: var(--danger); border-color: var(--danger); }
+.layout.collapsed { grid-template-columns: 1fr; }
+.layout.collapsed .sidebar { display: none; }
 .btn.link { border: none; background: none; color: var(--primary); padding: 4px; }
 .btn:disabled { opacity: 0.55; cursor: not-allowed; }
 .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
@@ -159,8 +160,7 @@ table.data tr:last-child td { border-bottom: none; }
 @media (max-width: 860px) {
   .layout { grid-template-columns: 1fr; }
   .sidebar { position: fixed; inset: 0 30% 0 0; z-index: 15; display: none; height: 100vh; }
-  .sidebar.open { display: block; }
-  .menu-btn { display: inline-flex; }
+  .sidebar.open, .layout.collapsed .sidebar.open { display: block; }
   .content { padding: 16px; }
   .topbar { padding: 10px 16px; }
   .topbar > .muted { display: none; }

@@ -167,6 +167,32 @@ function renderLogin(message) {
 // ---------------------------------------------------------------------------------------
 // Coque de l'application
 // ---------------------------------------------------------------------------------------
+// Bouton menu (☰) : masque ou affiche le menu latéral sur grand écran, ouvre le menu en surimpression sur mobile.
+const MENU_KEY = 'dora-menu-replie';
+const isNarrow = () => window.matchMedia('(max-width: 860px)').matches;
+function menuCollapsed() {
+  try {
+    return localStorage.getItem(MENU_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+function toggleMenu() {
+  if (isNarrow()) {
+    document.getElementById('sidebar')?.classList.toggle('open');
+    return;
+  }
+  const layout = document.querySelector('.layout');
+  const collapsed = !layout.classList.contains('collapsed');
+  layout.classList.toggle('collapsed', collapsed);
+  try {
+    if (collapsed) localStorage.setItem(MENU_KEY, '1');
+    else localStorage.removeItem(MENU_KEY);
+  } catch {
+    // préférence non mémorisée
+  }
+}
+
 function issuesFor(tbl) {
   return state.issues.filter((i) => i.table === tbl && i.level === 'erreur').length;
 }
@@ -204,7 +230,7 @@ function shell(content) {
   const topbar = h(
     'header',
     { class: 'topbar' },
-    h('button', { class: 'btn menu-btn', onclick: () => sidebar.classList.toggle('open') }, '☰'),
+    h('button', { class: 'btn menu-btn', title: 'Afficher / masquer le menu', 'aria-label': 'Afficher ou masquer le menu', onclick: toggleMenu }, '☰'),
     h('div', { class: 'muted small' }, me.permissions.global ? 'Périmètre : tout le registre' : `Périmètre : ${me.providers.length} prestataire(s) rattaché(s)`),
     h(
       'div',
@@ -228,7 +254,7 @@ function shell(content) {
     ),
   );
   sidebar.addEventListener('click', (e) => e.target.closest('a') && sidebar.classList.remove('open'));
-  $app.replaceChildren(h('div', { class: 'layout' }, sidebar, h('div', { class: 'main' }, topbar, h('main', { class: 'content' }, content))));
+  $app.replaceChildren(h('div', { class: `layout${menuCollapsed() ? ' collapsed' : ''}` }, sidebar, h('div', { class: 'main' }, topbar, h('main', { class: 'content' }, content))));
 }
 
 // ---------------------------------------------------------------------------------------
@@ -1337,7 +1363,7 @@ function readerShell(content) {
   const topbar = h(
     'header',
     { class: 'topbar' },
-    h('button', { class: 'btn menu-btn', onclick: () => sidebar.classList.toggle('open') }, '☰'),
+    h('button', { class: 'btn menu-btn', title: 'Afficher / masquer le menu', 'aria-label': 'Afficher ou masquer le menu', onclick: toggleMenu }, '☰'),
     h('div', { class: 'muted small' }, me.permissions.global ? 'Vous consultez tous les prestataires' : `Vous consultez ${plural(me.providers.length, 'prestataire', 'prestataires')}`),
     h(
       'div',
@@ -1361,7 +1387,7 @@ function readerShell(content) {
     ),
   );
   sidebar.addEventListener('click', (e) => e.target.closest('a') && sidebar.classList.remove('open'));
-  $app.replaceChildren(h('div', { class: 'layout' }, sidebar, h('div', { class: 'main' }, topbar, h('main', { class: 'content reader' }, content))));
+  $app.replaceChildren(h('div', { class: `layout${menuCollapsed() ? ' collapsed' : ''}` }, sidebar, h('div', { class: 'main' }, topbar, h('main', { class: 'content reader' }, content))));
 }
 
 function providerCard(p) {
