@@ -97,7 +97,8 @@ input, select, textarea { font: inherit; color: var(--text); background: var(--s
 input:focus, select:focus, textarea:focus { outline: 2px solid var(--primary); outline-offset: -1px; }
 input[type='checkbox'], input[type='radio'] { width: auto; }
 input:disabled, select:disabled, textarea:disabled { background: var(--surface-2); color: var(--muted); }
-.search { max-width: 280px; }
+.search { width: 280px; max-width: 100%; }
+.toolbar select { width: auto; }
 .empty { padding: 28px; text-align: center; color: var(--muted); }
 
 /* Tables */
@@ -162,5 +163,20 @@ table.data tr:last-child td { border-bottom: none; }
   .menu-btn { display: inline-flex; }
   .content { padding: 16px; }
   .topbar { padding: 10px 16px; }
+  .topbar > .muted { display: none; }
   .form-grid { grid-template-columns: 1fr; }
 }
+
+/* Vue simplifiée des lecteurs */
+.pcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.pcard { display: flex; flex-direction: column; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); color: var(--text); }
+.pcard:hover { border-color: var(--primary); text-decoration: none; }
+.pcard-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.pcard-badges { display: flex; gap: 6px; flex-wrap: wrap; min-height: 4px; }
+.pcard-meta { display: grid; gap: 2px; }
+ul.plain { list-style: none; padding: 0; margin: 0; }
+ul.plain li { padding: 8px 0; border-bottom: 1px solid var(--border); }
+ul.plain li:last-child { border-bottom: none; }
+.nav-foot { margin-top: 24px; padding: 12px 8px 0; border-top: 1px solid var(--border); }
+.nav-foot p { margin: 0 0 4px; }
+.content.reader { max-width: 1100px; }
