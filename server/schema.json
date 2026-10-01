@@ -1,0 +1,3447 @@
+{
+ "source": "EBA DORA Register of Information template (EBAv1)",
+ "tables": [
+  {
+   "code": "b_01.01",
+   "title": "TEMPLATE RT.01.01: Entity maintaining the register of information",
+   "columns": [
+    {
+     "code": "b_01.01.0010",
+     "name": "LEI of the entity maintaining the register of information",
+     "type": "Alphanumerical",
+     "instruction": "Identify the entity maintaining and updating the register of information using the LEI, 20-character, alpha-numeric code based on the ISO 17442 standard",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_01.01.0020",
+     "name": "Name of the entity",
+     "type": "Alphanumerical",
+     "instruction": "Legal name of the entity maintaining and updating the register of information",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_01.01.0030",
+     "name": "Country of the entity",
+     "type": "Country",
+     "instruction": "Identify the ISO 3166–1 alpha–2 code of the country where the license or the registration of the entity reported in the Register on Information has been issued.",
+     "option": "Mandatory",
+     "list": "LISTCOUNTRY"
+    },
+    {
+     "code": "b_01.01.0040",
+     "name": "Type of entity",
+     "type": "Closed set of options",
+     "instruction": "Identify the type of entity using one of the options in the corresponding dropdown list",
+     "option": "Mandatory",
+     "list": "LIST0101040"
+    },
+    {
+     "code": "b_01.01.0050",
+     "name": "Competent Authority",
+     "type": "Alphanumerical",
+     "instruction": "Identify the competent authority according to Article 46 of Regulation (EU) 2022/2554 to which the register of information is reported.",
+     "option": "Mandatory in case of reporting",
+     "list": null
+    },
+    {
+     "code": "b_01.01.0060",
+     "name": "Date of the reporting",
+     "type": "Date",
+     "instruction": "Identify the ISO 8601 (yyyy–mm–dd) code of the date of reporting",
+     "option": "Mandatory in case of reporting",
+     "list": null
+    }
+   ]
+  },
+  {
+   "code": "b_01.02",
+   "title": "TEMPLATE RT.01.02: List of entities within the scope of the register of information",
+   "columns": [
+    {
+     "code": "b_01.02.0010",
+     "name": "LEI of the entity",
+     "type": "Alphanumerical",
+     "instruction": "Identify the entity reported in the Register on Information using the LEI, 20-character, alpha-numeric code based on the ISO 17442 standard",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_01.02.0020",
+     "name": "Name of the entity",
+     "type": "Alphanumerical",
+     "instruction": "Legal name of the entity reported in the register of information.",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_01.02.0030",
+     "name": "Country of the entity",
+     "type": "Country",
+     "instruction": "Identify the ISO 3166–1 alpha–2 code of the country where the license or the registration of the entity reported in the Register on Information has been issued.",
+     "option": "Mandatory",
+     "list": "LISTCOUNTRY"
+    },
+    {
+     "code": "b_01.02.0040",
+     "name": "Type of entity",
+     "type": "Closed set of options",
+     "instruction": "Identify the type of entity using one of the options in the corresponding dropdown list",
+     "option": "Mandatory",
+     "list": "LIST0101040"
+    },
+    {
+     "code": "b_01.02.0050",
+     "name": "Hierarchy of the entity within the group (where applicable)",
+     "type": "Closed set of options",
+     "instruction": "Identify the hierarchy of the entity within the scope of consolidation using one of the options in the corresponding dropdown list",
+     "option": "Mandatory",
+     "list": "LIST0102050"
+    },
+    {
+     "code": "b_01.02.0060",
+     "name": "LEI of the direct parent undertaking of the entity",
+     "type": "Alphanumerical",
+     "instruction": "Identify the direct parent undertaking of the entity reported in the Register on Information using the LEI, 20-character, alpha-numeric code based on the ISO 17442 standard",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_01.02.0070",
+     "name": "Date of last update",
+     "type": "Date",
+     "instruction": "Identify the ISO 8601 (yyyy–mm–dd) code of the date of the last update made on the Register of information in relation to the entity.",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_01.02.0080",
+     "name": "Date of integration in the Register of information",
+     "type": "Date",
+     "instruction": "Identify the ISO 8601 (yyyy–mm–dd) code of the date of integration in the Register of information",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_01.02.0090",
+     "name": "Date of deletion in the Register of information",
+     "type": "Date",
+     "instruction": "Identify the ISO 8601 (yyyy–mm–dd) code of the date of deletion in the Register of information. If the entity has not been deleted, ‘9999-12-31’ shall be reported",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_01.02.0100",
+     "name": "Currency",
+     "type": "Currency",
+     "instruction": "Identify the ISO 4217 alphabetic code of the currency used for the preparation of the financial entity’s financial statements",
+     "option": "Mandatory",
+     "list": "LISTCURRENCY"
+    },
+    {
+     "code": "b_01.02.0110",
+     "name": "Value of total assets - of the financial entity",
+     "type": "Monetary",
+     "instruction": "Monetary value of total assets of the entity making use of the ICT services as reported in the entity’s annual financial statement of the year before the date of the last update of the register of information. Refer to Annex IV for the approach to be followed when filling in this column.",
+     "option": "Mandatory if the entity is a financial entity",
+     "list": null
+    }
+   ]
+  },
+  {
+   "code": "b_01.03",
+   "title": "TEMPLATE RT.01.03: List of branches",
+   "columns": [
+    {
+     "code": "b_01.03.0010",
+     "name": "Identification code of the branch",
+     "type": "Alphanumerical",
+     "instruction": "Identify a branch of a financial entity located outside its home country using a unique code for each branch. One of the options in the following closed list shall be used: - LEI of the branch if unique for this branch and different from b_01.03.0020; - Other identification code used by the financial entity to identify the branch (if the LEI of the branch is equivalent to the one in b_01.03.0020 or equivalent to the LEI of another branch).",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_01.03.0020",
+     "name": "LEI of the financial entity head office of the branch",
+     "type": "Alphanumerical",
+     "instruction": "As referred to in b_01.02.0010 Identify the financial entity head office of the branch, using the LEI, 20-character, alpha-numeric code based on the ISO 17442 standard",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_01.03.0030",
+     "name": "Name of the branch",
+     "type": "Alphanumerical",
+     "instruction": "Identify the name of the branch",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_01.03.0040",
+     "name": "Country of the branch",
+     "type": "Country",
+     "instruction": "Identify the ISO 3166–1 alpha–2 code of the country where the branch is located.",
+     "option": "Mandatory",
+     "list": "LISTCOUNTRY"
+    }
+   ]
+  },
+  {
+   "code": "b_02.01",
+   "title": "TEMPLATE RT.02.01: Contractual arrangements – General Information",
+   "columns": [
+    {
+     "code": "b_02.01.0010",
+     "name": "Contractual arrangement reference number",
+     "type": "Alphanumerical",
+     "instruction": "Identify the contractual arrangement between the financial entity or, in case of a group, the group subsidiary and the direct ICT third-party service provider. The contractual arrangement reference number is the internal reference number of the contractual arrangement assigned by the financial entity. The contractual arrangement reference number shall be unique and consistent over time at entity, sub-consolidated and consolidated level, where applicable. The contractual arrangement reference number shall be used consistently across all templates of the register of information when referring to the same contractual arrangement.",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_02.01.0020",
+     "name": "Type of contractual arrangement",
+     "type": "Closed set of options",
+     "instruction": "Identify the type of contractual arrangement by using one of the options in the corresponding dropdown list",
+     "option": "Mandatory",
+     "list": "LIST0201020"
+    },
+    {
+     "code": "b_02.01.0030",
+     "name": "Overarching contractual arrangement reference number",
+     "type": "Alphanumerical",
+     "instruction": "Not applicable if the contractual arrangement is the ‘overarching contractual arrangement’ or a ‘standalone arrangement’. In the other cases, report the contractual arrangement reference number of the overarching arrangement, which shall be equal to value as reported in the column b_02.01.0010 when reporting the overarching contractual arrangement.",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_02.01.0040",
+     "name": "Currency of the amount reported in RT.02.01.0050",
+     "type": "Currency",
+     "instruction": "Identify the ISO 4217 alphabetic code of the currency used to express the amount in b_02.01.0050",
+     "option": "Mandatory",
+     "list": "LISTCURRENCY"
+    },
+    {
+     "code": "b_02.01.0050",
+     "name": "Annual expense or estimated cost of the contractual arrangement for the past year",
+     "type": "Monetary",
+     "instruction": "Annual expense or estimated cost (or intragroup transfer) of the ICT service arrangement for the past year. The annual expense or estimated cost shall be expressed in the currency reported in b_01.02.0040. In case of an overarching arrangement with subsequent or associated arrangements, the sum of the annual expenses or estimated costs reported for the overarching arrangement and the subsequent or associated arrangements shall be equal to the total expenses or estimated costs for the overall contractual arrangement. This means, there should be no repetition or duplication of annual expenses or estimated costs. The following cases should be reflected: (a) if the annual expenses or estimate costs are not determined at the level of the overarching arrangement (i.e. they are 0), the annual expenses or estimated costs should be reported at the level of each subsequent or associated arrangements. (b) if the annual expenses or estimated costs cannot be reported for each of the subsequent or associated arrangements, the total annual expense or estimated cost should be reported at the level of the overarching arrangement. (c) if there are annual expenses or estimated costs related to each level of the arrangement, i.e. overarching and subsequent or associated, and this information is available, the annual expenses or estimated costs shall be reported without duplication at each level of the contractual arrangement.",
+     "option": "Mandatory",
+     "list": null
+    }
+   ]
+  },
+  {
+   "code": "b_02.02",
+   "title": "TEMPLATE RT.02.02: Contractual arrangements – Specific information",
+   "columns": [
+    {
+     "code": "b_02.02.0010",
+     "name": "Contractual arrangement reference number",
+     "type": "Alphanumerical",
+     "instruction": "As reported in b_02.01.0010",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_02.02.0020",
+     "name": "LEI of the entity making use of the ICT service(s)",
+     "type": "Alphanumerical",
+     "instruction": "As reported in b_04.01.0020 Identify the entity making use of the ICT service(s) using the LEI, 20-character, alpha-numeric code based on the ISO 17442 standard",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_02.02.0030",
+     "name": "Identification code of the ICT third-party service provider",
+     "type": "Alphanumerical",
+     "instruction": "As reported in b_05.01.0010 Code to identify the ICT third-party service provider",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_02.02.0040",
+     "name": "Type of code to identify the ICT third-party service provider",
+     "type": "Pattern",
+     "instruction": "As reported in b_05.01.0020 Identify the type of code to identify the ICT third-party service provider in b_02.02.0030 1. ‘LEI’ for LEI 2. ‘Country Code’+Underscore+’Type of Code’ for non LEI code Country Code: Identify the ISO 3166–1 alpha–2 code of the country of issuance of the other code to identify the ICT third-party service provider Type of Code: 1. CRN for Corporate registration number 2. VAT for VAT number 3. PNR for Passport Number 4. NIN for National Identity Number",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_02.02.0050",
+     "name": "Function identifier",
+     "type": "Pattern",
+     "instruction": "As defined by the financial entity in b_06.01.0010",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_02.02.0060",
+     "name": "Type of ICT services",
+     "type": "Closed set of options",
+     "instruction": "One of the types of ICT services referred to in Annex III",
+     "option": "Mandatory",
+     "list": "LISTANNEXIII"
+    },
+    {
+     "code": "b_02.02.0070",
+     "name": "Start date of the contractual arrangement",
+     "type": "Date",
+     "instruction": "Identify the date of entry into force of the contractual arrangement as stipulated in the contractual arrangement using the ISO 8601 (yyyy–mm–dd) code",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_02.02.0080",
+     "name": "End date of the contractual arrangement",
+     "type": "Date",
+     "instruction": "Identify the end date as stipulated in the contractual arrangement using the ISO 8601 (yyyy–mm–dd) code. If the contractual arrangement is indefinite, it shall be filled in with ‘9999-12-31’. If the contractual arrangement has been terminated on a date different than the end date, this shall be filled in with the termination date. In case the contractual arrangement foresees a renewal, this shall be filled in with the date of the contract renewal as stipulated in the contractual arrangement.",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_02.02.0090",
+     "name": "Reason of the termination or ending of the contractual arrangement",
+     "type": "Closed set of options",
+     "instruction": "In case the contractual arrangement has been terminated or it is ended, identify the reason of the termination or ending of the contractual arrangements using one of the options in the corresponding dropdown list",
+     "option": "Mandatory if the contractual arrangement is terminated",
+     "list": "LIST0202090"
+    },
+    {
+     "code": "b_02.02.0100",
+     "name": "Notice period for the financial entity making use of the ICT service(s)",
+     "type": "Natural number",
+     "instruction": "Identify the notice period for terminating the contractual arrangement by the financial entity in a business-as-usual case. The notice period shall be expressed as number of calendar days from the receipt of the counterparty of the request to terminate the ICT service.",
+     "option": "Mandatory if the ICT service is supporting a critical or important function",
+     "list": null
+    },
+    {
+     "code": "b_02.02.0110",
+     "name": "Notice period for the ICT third-party service provider",
+     "type": "Natural number",
+     "instruction": "Identify the notice period for terminating contractual arrangement by the direct ICT third-party service provider in a business-as-usual case. The notice period shall be expressed as number of calendar days from the receipt of the counterparty of the request to terminate the ICT service.",
+     "option": "Mandatory if the ICT service is supporting a critical or important function",
+     "list": null
+    },
+    {
+     "code": "b_02.02.0120",
+     "name": "Country of the governing law of the contractual arrangement",
+     "type": "Country",
+     "instruction": "Identify the country of the governing law of the contractual arrangement using the ISO 3166–1 alpha–2 code.",
+     "option": "Mandatory if the ICT service is supporting a critical or important function",
+     "list": "LISTCOUNTRY"
+    },
+    {
+     "code": "b_02.02.0130",
+     "name": "Country of provision of the ICT services",
+     "type": "Country",
+     "instruction": "Identify the country of provision of the ICT services using the ISO 3166–1 alpha–2 code.",
+     "option": "Mandatory if the ICT service is supporting a critical or important function",
+     "list": "LISTCOUNTRY"
+    },
+    {
+     "code": "b_02.02.0140",
+     "name": "Storage of data",
+     "type": "[Yes/No]",
+     "instruction": "Is the ICT service related to (or foresees) storage of data? one of the options in the corresponding dropdown list",
+     "option": "Mandatory if the ICT service is supporting a critical or important function",
+     "list": "LISTBINARY"
+    },
+    {
+     "code": "b_02.02.0150",
+     "name": "Location of the data at rest (storage)",
+     "type": "Country",
+     "instruction": "Identify the country of location of the data at rest (storage) using the ISO 3166–1 alpha–2 code.",
+     "option": "Mandatory if ’Yes’ is reported in RT.02.02.0140",
+     "list": "LISTCOUNTRY"
+    },
+    {
+     "code": "b_02.02.0160",
+     "name": "Location of management of the data (processing)",
+     "type": "Country",
+     "instruction": "Identify the country of location of management of the data (processing) using the ISO 3166–1 alpha–2 code.",
+     "option": "Mandatory if the ICT service is based on or foresees data processing",
+     "list": "LISTCOUNTRY"
+    },
+    {
+     "code": "b_02.02.0170",
+     "name": "Sensitiveness of the data stored by the ICT third-party service provider",
+     "type": "Closed set of options",
+     "instruction": "Identify the level of sensitiveness of the data stored or processed by the ICT third-party service provider using one of the options in the corresponding dropdown list The most sensitive data take precedence: e.g. if both ‘Medium’ and ‘High’ apply, then ‘High’ shall be selected.",
+     "option": "Mandatory if the ICT third-party service provider stores data and if the ICT service is supporting a critical or important function or material part thereof",
+     "list": "LIST0202170"
+    },
+    {
+     "code": "b_02.02.0180",
+     "name": "Level of reliance on the ICT service supporting the critical or important function.",
+     "type": "Closed set of options",
+     "instruction": "One of the options in the corresponding dropdown list shall be used:",
+     "option": "Mandatory if the ICT service is supporting a critical or important function or material part thereof",
+     "list": "LIST0202180"
+    }
+   ]
+  },
+  {
+   "code": "b_02.03",
+   "title": "TEMPLATE RT.02.03: List of intra-group contractual arrangements",
+   "columns": [
+    {
+     "code": "b_02.03.0010",
+     "name": "Contractual arrangement reference number",
+     "type": "Alphanumerical",
+     "instruction": "Contractual arrangement reference number between the entity making use of the ICT service(s) provided and the ICT intra-group service provider. The contractual arrangement reference number shall be unique and consistent over time and across all the group.",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_02.03.0020",
+     "name": "Contractual arrangement linked to the contractual arrangement referred in RT.02.03.0010",
+     "type": "Alphanumerical",
+     "instruction": "Contractual arrangement reference number of the contractual arrangement between the ICT intra-group service provider of the contractual arrangement in b_02.03.0010 and its direct ICT third-party service provider",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_02.03.0030",
+     "name": "Link",
+     "type": "Fill with \"true\" for each populated row",
+     "instruction": "Technical field. To be filled with the value \"TRUE\" for each populated row.",
+     "option": null,
+     "list": null
+    }
+   ]
+  },
+  {
+   "code": "b_03.01",
+   "title": "TEMPLATE RT.03.01: Entities signing the Contractual arrangements for receiving ICT service(s) or on behalf of the entities making use of the ICT service(s)",
+   "columns": [
+    {
+     "code": "b_03.01.0010",
+     "name": "Contractual arrangement reference number",
+     "type": "Alphanumerical",
+     "instruction": "As reported in b_02.02.0010 Identify the contractual reference number signed by the entity",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_03.01.0020",
+     "name": "LEI of the entity signing the contractual arrangement",
+     "type": "Alphanumerical",
+     "instruction": "Identify the entity signing the contractual arrangement using the LEI, 20-character, alpha-numeric code based on the ISO 17442 standard",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_03.01.0030",
+     "name": "Link",
+     "type": "Fill with \"true\" for each populated row",
+     "instruction": "Technical field. To be filled with the value \"TRUE\" for each populated row.",
+     "option": null,
+     "list": null
+    }
+   ]
+  },
+  {
+   "code": "b_03.02",
+   "title": "TEMPLATE RT.03.02: ICT third-party service providers signing the Contractual arrangements for providing ICT service(s)",
+   "columns": [
+    {
+     "code": "b_03.02.0010",
+     "name": "Contractual arrangement reference number",
+     "type": "Alphanumerical",
+     "instruction": "As reported in b_02.02.0010 Identify the contractual arrangement reference number signed by the ICT third-party service provider",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_03.02.0020",
+     "name": "Identification code of ICT third-party service provider",
+     "type": "Alphanumerical",
+     "instruction": "As reported in b_05.01.0010 Code to identify the ICT third-party service provider",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_03.02.0030",
+     "name": "Type of code to identify the ICT third-party service provider",
+     "type": "Pattern",
+     "instruction": "As reported in b_05.01.0020 Identify the type of code to identify the ICT third-party service provider in b_03.02.0020 1. ‘LEI’ for LEI 2. ‘Country Code’+Underscore+’Type of Code’ for non LEI code Country Code: Identify the ISO 3166–1 alpha–2 code of the country of issuance of the other code to identify the ICT third-party service provider Type of Code: 1. CRN for Corporate registration number 2. VAT for VAT number 3. PNR for Passport Number 4. NIN for National Identity Number",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_03.02.0045",
+     "name": "Link",
+     "type": "Fill with \"true\" for each populated row",
+     "instruction": "Technical field. To be filled with the value \"TRUE\" for each populated row.",
+     "option": null,
+     "list": null
+    }
+   ]
+  },
+  {
+   "code": "b_03.03",
+   "title": "TEMPLATE RT.03.03: Entities signing the Contractual arrangements for providing ICT service(s) to other entity within the scope of consolidation.",
+   "columns": [
+    {
+     "code": "b_03.03.0010",
+     "name": "Contractual arrangement reference number",
+     "type": "Alphanumerical",
+     "instruction": "As reported in b_02.02.0010 Identify the contractual reference number signed by the entity for providing ICT service(s)",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_03.03.0020",
+     "name": "LEI of the entity providing ICT services",
+     "type": "Alphanumerical",
+     "instruction": "As reported in b_01.02.0010 Identify the entity providing ICT services using LEI, 20-character, alpha-numeric code based on the ISO 17442 standard",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_03.03.0031",
+     "name": "Link",
+     "type": "Fill with \"true\" for each populated row",
+     "instruction": "Technical field. To be filled with the value \"TRUE\" for each populated row.",
+     "option": null,
+     "list": null
+    }
+   ]
+  },
+  {
+   "code": "b_04.01",
+   "title": "TEMPLATE RT.04.01: Entities making use of the ICT services",
+   "columns": [
+    {
+     "code": "b_04.01.0010",
+     "name": "Contractual arrangement reference number",
+     "type": "Alphanumerical",
+     "instruction": "As reported in b_02.01.0010 Identify the contractual reference number in relation to the entity making use of the ICT services provided",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_04.01.0020",
+     "name": "LEI of the entity making use of the ICT service(s)",
+     "type": "Alphanumerical",
+     "instruction": "Identify the entity making use of the ICT service(s) using the LEI, 20-character, alpha-numeric code based on the ISO 17442 standard",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_04.01.0030",
+     "name": "Nature of the entity making use of the ICT service(s)",
+     "type": "Closed set of options",
+     "instruction": "One of the options in the corresponding dropdown list shall be used",
+     "option": "Mandatory",
+     "list": "LIST0401030"
+    },
+    {
+     "code": "b_04.01.0040",
+     "name": "Identification code of the branch",
+     "type": "Alphanumerical",
+     "instruction": "Identification code of the branch as reported in b_01.03.0010",
+     "option": "Mandatory if the entity making use of the ICT service(s) is a branch of a financial entity (RT.04.01.0030)",
+     "list": null
+    }
+   ]
+  },
+  {
+   "code": "b_05.01",
+   "title": "TEMPLATE RT.05.01: ICT third-party service providers",
+   "columns": [
+    {
+     "code": "b_05.01.0010",
+     "name": "Identification code of ICT third-party service provider",
+     "type": "Alphanumerical",
+     "instruction": "Code to identify the ICT third-party service provider",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_05.01.0020",
+     "name": "Type of code to identify the ICT third-party service provider",
+     "type": "Pattern",
+     "instruction": "Identify the type of code to identify the ICT third-party service provider in b_05.01.0010 1. ‘LEI’ for LEI 2. ‘Country Code’+Underscore+’Type of Code’ for non LEI code Country Code: Identify the ISO 3166–1 alpha–2 code of the country of issuance of the other code to identify the ICT third-party service provider Type of Code: 1. CRN for Corporate registration number 2. VAT for VAT number 3. PNR for Passport Number 4. NIN for National Identity Number",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_05.01.0030",
+     "name": "Name of the ICT third-party service provider",
+     "type": "Alphanumerical",
+     "instruction": "Legal name of the ICT third-party service provider",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_05.01.0040",
+     "name": "Type of person of the ICT third-party service provider",
+     "type": "Closed set of options",
+     "instruction": "One of the options in the corresponding dropdown list shall be used. Providing the LEI is mandatory for legal person including natural persons acting in a business capacity",
+     "option": "Mandatory",
+     "list": "LIST0501040"
+    },
+    {
+     "code": "b_05.01.0050",
+     "name": "Country of the ICT third-party service provider’s headquarters",
+     "type": "Country",
+     "instruction": "Identify the ISO 3166–1 alpha–2 code of the country in which the global operating headquarters of ICT third-party service provider are located.",
+     "option": "Mandatory",
+     "list": "LISTCOUNTRY"
+    },
+    {
+     "code": "b_05.01.0060",
+     "name": "Currency of the amount reported in RT.05.01.0070",
+     "type": "Currency",
+     "instruction": "Identify the ISO 4217 alphabetic code of the currency used to express the amount in b_05.01.0070",
+     "option": "Mandatory if RT.05.01.0070 is reported",
+     "list": "LISTCURRENCY"
+    },
+    {
+     "code": "b_05.01.0070",
+     "name": "Total annual expense or estimated cost of the ICT third-party service provider",
+     "type": "Monetary",
+     "instruction": "Annual expense or estimated cost for using the ICT services provided by the ICT third-party service provider to the entities making use of the ICT services",
+     "option": "Mandatory if the ICT third-party service provider is a direct ICT third-party service provider",
+     "list": null
+    },
+    {
+     "code": "b_05.01.0080",
+     "name": "Identification code of the ICT third-party service provider’s ultimate parent undertaking",
+     "type": "Alphanumerical",
+     "instruction": "Code to identify the ICT third-party service provider’s ultimate parent undertaking",
+     "option": "Mandatory if the ICT third-party service provider is not the ultimate parent undertaking",
+     "list": null
+    },
+    {
+     "code": "b_05.01.0090",
+     "name": "Type of code to identify the ICT third-party service provider’s ultimate parent undertaking",
+     "type": "Pattern",
+     "instruction": "Identify the type of code to identify the ICT third-party service provider’s ultimate parent undertaking in b_05.01.0080 1. ‘LEI’ for LEI 2. ‘Country Code’+Underscore+’Type of Code’ for non LEI code Country Code: Identify the ISO 3166–1 alpha–2 code of the country of issuance of the other code to identify the ICT third-party service provider Type of Code: 1. CRN for Corporate registration number 2. VAT for VAT number 3. PNR for Passport Number 4. NIN for National Identity Number",
+     "option": "Mandatory if the ICT third-party service provider is not the ultimate parent undertaking",
+     "list": null
+    }
+   ]
+  },
+  {
+   "code": "b_05.02",
+   "title": "TEMPLATE RT.05.02: ICT service supply chains",
+   "columns": [
+    {
+     "code": "b_05.02.0010",
+     "name": "Contractual arrangement reference number",
+     "type": "Alphanumerical",
+     "instruction": "As reported in b_02.01.0010",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_05.02.0020",
+     "name": "Type of ICT services",
+     "type": "Closed set of options",
+     "instruction": "One of the types of ICT services referred to in Annex III",
+     "option": "Mandatory",
+     "list": "LISTANNEXIII"
+    },
+    {
+     "code": "b_05.02.0030",
+     "name": "Identification code of the ICT third-party service provider",
+     "type": "Alphanumerical",
+     "instruction": "As reported in b_05.01.0010",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_05.02.0040",
+     "name": "Type of code to identify the ICT third-party service provider",
+     "type": "Pattern",
+     "instruction": "As reported in b_05.01.0020",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_05.02.0050",
+     "name": "Rank",
+     "type": "Natural number",
+     "instruction": "If the ICT third-party service provider is signing the contractual arrangement with the financial entity, it is considered as a direct ICT third-party service provider and the ‘rank’ to be reported shall be 1; If the ICT third-party service provider is signing the contract with the direct ICT third-party service provider, it is considered as a subcontractor and the ‘rank’ to be reported shall be 2; The same logic apply to all the following subcontractors by incrementing the ‘rank’. In case multiple ICT third-party service providers have the same ‘rank’ in the ICT service supply chain, financial entities shall report the same ‘rank’ for all those ICT third-party service providers.",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_05.02.0060",
+     "name": "Identification code of the recipient of sub-contracted ICT services",
+     "type": "Alphanumerical",
+     "instruction": "‘Not applicable’ if the ICT third-party service provider b_05.02.0030) is a direct ICT third-party service provider i.e. at ‘rank’ r = 1 (b_05.02.0050); If the ICT third-party service provider is at ‘rank’ r = n where n>1, indicate the ‘Identification code of the recipient of sub-contracted services’ at ‘rank’ r=n-1 that subcontracted the ICT service (even partially) to the ICT third-party service provider at ‘rank’ r=n.",
+     "option": "Mandatory Not applicable for rank 1",
+     "list": null
+    },
+    {
+     "code": "b_05.02.0070",
+     "name": "Type of code to identify the recipient of sub-contracted ICT services",
+     "type": "Pattern",
+     "instruction": "‘Not applicable’ if the ICT third-party service provider b_05.02.0030) is at contracting rank r = 1 (b_05.02.0050); If the ICT third-party service provider is at ‘rank’ r = n where n>1, indicate the ‘Type of code to identify the recipient of sub-contracted service’ at ‘rank’ r=n-1 that subcontracted the ICT service (even partially) to the ICT third-party service provider at ‘rank’ r=n. 1. ‘LEI’ for LEI 2. ‘Country Code’+Underscore+’Type of Code’ for non LEI code Country Code: Identify the ISO 3166–1 alpha–2 code of the country of issuance of the other code to identify the ICT third-party service provider Type of Code: 1. CRN for Corporate registration number 2. VAT for VAT number 3. PNR for Passport Number 4. NIN for National Identity Number",
+     "option": "Mandatory Not applicable for rank 1",
+     "list": null
+    }
+   ]
+  },
+  {
+   "code": "b_06.01",
+   "title": "TEMPLATE RT.06.01: Functions identification",
+   "columns": [
+    {
+     "code": "b_06.01.0010",
+     "name": "Function Identifier",
+     "type": "Pattern",
+     "instruction": "The function identifier shall be composed by the letter F (capital letter) followed by an natural number (e.g. “F1” for the 1st function identifier and “Fn” for the nth function identifier with “n” being an natural number). Each combination between ‘LEI of the financial entity making use of the ICT service(s)’ (b_06.01.0040), ‘Function name’ (b_06.01.0030) and ‘Licenced activity’ (b_06.01.0020) shall have a unique function identifier Example: a financial entity which operates under two licensed activities (say, activity A and activity B) will identify two unique ‘function identifiers’ for the same function X (e.g. Sales) performed for activity A and activity B.",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_06.01.0020",
+     "name": "Licenced activity",
+     "type": "Closed set of options",
+     "instruction": "One of the licenced activities referred to in Annex II for the different type of financial entities. In case the function is not linked to a registered or licenced activity, ‘support functions’ shall be reported.",
+     "option": "Mandatory",
+     "list": "LIST0601020"
+    },
+    {
+     "code": "b_06.01.0030",
+     "name": "Function name",
+     "type": "Alphanumerical",
+     "instruction": "Function name according to the financial entity’s internal organisation.",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_06.01.0040",
+     "name": "LEI of the financial entity",
+     "type": "Alphanumerical",
+     "instruction": "As reported in b_04.01.0020 Identify the financial entity using the LEI, 20-character, alpha-numeric code based on the ISO 17442 standard",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_06.01.0050",
+     "name": "Criticality or importance assessment",
+     "type": "Closed set of options",
+     "instruction": "Use this column to indicate whether the function is critical or important according to the financial entity’s assessment. One of the options in the corresponding dropdown list shall be used:",
+     "option": "Mandatory",
+     "list": "LIST0601050"
+    },
+    {
+     "code": "b_06.01.0060",
+     "name": "Reasons for criticality or importance",
+     "type": "Alphanumerical",
+     "instruction": "Brief explanation on the reasons to classify the function as critical or important (300 characters maximum)",
+     "option": "Optional",
+     "list": null
+    },
+    {
+     "code": "b_06.01.0070",
+     "name": "Date of the last assessment of criticality or importance",
+     "type": "Date",
+     "instruction": "Identify the ISO 8601 (yyyy–mm–dd) code of the date of the last assessment of criticality or importance in case the function is supported by ICT services provided by ICT third-party service providers. In case the function’s assessment of criticality or importance is not performed, it shall be filled in with ‘9999-12-31’",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_06.01.0080",
+     "name": "Recovery time objective of the function",
+     "type": "Natural number",
+     "instruction": "In number of hours. If the recovery time objective is less than 1 hour, ‘1’ shall be reported. In case the recovery time objective of the function is not defined ‘0’ shall be reported.",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_06.01.0090",
+     "name": "Recovery point objective of the function",
+     "type": "Natural number",
+     "instruction": "In number of hours. If the recovery point objective is less than 1 hour, ‘1’ shall be reported. In case the recovery time objective of the function is not defined ‘0’ shall be reported.",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_06.01.0100",
+     "name": "Impact of discontinuing the function",
+     "type": "Closed set of options",
+     "instruction": "Use this column to indicate the impact of discontinuing the function according to the financial entity’s assessment. One of the options in the corresponding dropdown list shall be used.",
+     "option": "Mandatory",
+     "list": "LIST0601100"
+    }
+   ]
+  },
+  {
+   "code": "b_07.01",
+   "title": "TEMPLATE RT.07.01: Assessment of the ICT services",
+   "columns": [
+    {
+     "code": "b_07.01.0010",
+     "name": "Contractual arrangement reference number",
+     "type": "Alphanumerical",
+     "instruction": "As reported in b_02.01.0010",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_07.01.0020",
+     "name": "Identification code of the ICT third-party service provider",
+     "type": "Alphanumerical",
+     "instruction": "As reported in b_05.01.0010",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_07.01.0030",
+     "name": "Type of code to identify the ICT third-party service provider",
+     "type": "Pattern",
+     "instruction": "As reported in b_05.01.0020",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_07.01.0040",
+     "name": "Type of ICT services",
+     "type": "Closed set of options",
+     "instruction": "One of the types of ICT services referred to in Annex III",
+     "option": "Mandatory",
+     "list": "LISTANNEXIII"
+    },
+    {
+     "code": "b_07.01.0050",
+     "name": "Substitutability of the ICT third-party service provider",
+     "type": "Closed set of options",
+     "instruction": "Use this column to provide the results of the financial entity’s assessment in relation to the degree of substitutability of the ICT third-party service provider to perform the specific ICT services supporting a critical or important function. One of the options in the corresponding dropdown list shall be used",
+     "option": "Mandatory",
+     "list": "LIST0701050"
+    },
+    {
+     "code": "b_07.01.0060",
+     "name": "Reason if the ICT third-party service provider is considered not substitutable or difficult to be substitutable",
+     "type": "Closed set of options",
+     "instruction": "One of the options in the corresponding dropdown list shall be used",
+     "option": "Mandatory in case “not substitutable” or “highly complex substitutability” is selected in RT.07.01.0050",
+     "list": "LIST0701060"
+    },
+    {
+     "code": "b_07.01.0070",
+     "name": "Date of the last audit on the ICT third-party service provider",
+     "type": "Date",
+     "instruction": "Use this column to provide the date of the last audit on the specific ICT services provided by the ICT third-party service provider. This column relates to audits conducted by: (i) the internal audit department or any other additional qualified personnel of the financial entity, (ii) a joint team together with other clients of the same ICT third-party service provider (“pooled audit”) or (iii) a third party appointed by the supervised entity to audit the service provider. This column does not relate to the reception or reference date of third-party certifications or internal audit reports of the ICT third-party service provider, the annual monitoring date of the arrangement by the financial entity or the date of review of the risk assessment by the financial entity. This column shall be used to report all types of audits performed by any of the subjects listed above concerning fully or partially the ICT services provided by the ICT third-party service provider. To report the date, the ISO 8601 (yyyy–mm–dd) code shall be used. If no audit has been performed, it shall be filled in with ‘9999-12-31’.",
+     "option": "Mandatory",
+     "list": null
+    },
+    {
+     "code": "b_07.01.0080",
+     "name": "Existence of an exit plan",
+     "type": "[Yes/No]",
+     "instruction": "Use this column to report the existence of an exit plan from the ICT third-party service provider in relation to the specific ICT service provided. One of the options in the corresponding dropdown list shall be used:",
+     "option": "Mandatory",
+     "list": "LISTBINARY"
+    },
+    {
+     "code": "b_07.01.0090",
+     "name": "Possibility of reintegration of the contracted ICT service",
+     "type": "Closed set of options",
+     "instruction": "One of the options in the corresponding dropdown list shall be used In case the ICT service is provided by an ICT third-party service provider that is not an ICT intra-group service provider",
+     "option": "Mandatory",
+     "list": "LIST0701090"
+    },
+    {
+     "code": "b_07.01.0100",
+     "name": "Impact of discontinuing the ICT services",
+     "type": "Closed set of options",
+     "instruction": "Use this column to provide the impact for the financial entity of discontinuing the ICT services provided by the ICT third-party service provider according to the financial entity’s assessment. One of the options in the corresponding dropdown list shall be used.",
+     "option": "Mandatory",
+     "list": "LIST0601100"
+    },
+    {
+     "code": "b_07.01.0110",
+     "name": "Are there alternative ICT third-party service providers identified?",
+     "type": "Closed set of options",
+     "instruction": "One of the options in the corresponding dropdown list shall be used. In principle, for each ICT third-party service provider supporting a critical or important function, the assessment to identify an alternative service provider shall be performed.",
+     "option": "Mandatory",
+     "list": "LIST0601050"
+    },
+    {
+     "code": "b_07.01.0120",
+     "name": "Identification of alternative ICT TPP",
+     "type": "Alphanumerical",
+     "instruction": "If ‘Yes’ is reported in b_07.01.0110, additional information could be provided in this column",
+     "option": "Optional",
+     "list": null
+    }
+   ]
+  }
+ ],
+ "lists": {
+  "LISTCOUNTRY": [
+   {
+    "code": "eba_GA:AL",
+    "label": "ALBANIA"
+   },
+   {
+    "code": "eba_GA:AT",
+    "label": "AUSTRIA"
+   },
+   {
+    "code": "eba_GA:BE",
+    "label": "BELGIUM"
+   },
+   {
+    "code": "eba_GA:BG",
+    "label": "BULGARIA"
+   },
+   {
+    "code": "eba_GA:CY",
+    "label": "CYPRUS"
+   },
+   {
+    "code": "eba_GA:CZ",
+    "label": "CZECH REPUBLIC"
+   },
+   {
+    "code": "eba_GA:DK",
+    "label": "DENMARK"
+   },
+   {
+    "code": "eba_GA:EE",
+    "label": "ESTONIA"
+   },
+   {
+    "code": "eba_GA:FI",
+    "label": "FINLAND"
+   },
+   {
+    "code": "eba_GA:FR",
+    "label": "FRANCE"
+   },
+   {
+    "code": "eba_GA:DE",
+    "label": "GERMANY"
+   },
+   {
+    "code": "eba_GA:GR",
+    "label": "GREECE"
+   },
+   {
+    "code": "eba_GA:HU",
+    "label": "HUNGARY"
+   },
+   {
+    "code": "eba_GA:IE",
+    "label": "IRELAND"
+   },
+   {
+    "code": "eba_GA:IT",
+    "label": "ITALY"
+   },
+   {
+    "code": "eba_GA:JP",
+    "label": "JAPAN"
+   },
+   {
+    "code": "eba_GA:XK",
+    "label": "KOSOVO"
+   },
+   {
+    "code": "eba_GA:LV",
+    "label": "LATVIA"
+   },
+   {
+    "code": "eba_GA:LT",
+    "label": "LITHUANIA"
+   },
+   {
+    "code": "eba_GA:LU",
+    "label": "LUXEMBOURG"
+   },
+   {
+    "code": "eba_GA:MK",
+    "label": "NORTH MACEDONIA"
+   },
+   {
+    "code": "eba_GA:MT",
+    "label": "MALTA"
+   },
+   {
+    "code": "eba_GA:NL",
+    "label": "NETHERLANDS"
+   },
+   {
+    "code": "eba_GA:NO",
+    "label": "NORWAY"
+   },
+   {
+    "code": "eba_GA:PL",
+    "label": "POLAND"
+   },
+   {
+    "code": "eba_GA:PT",
+    "label": "PORTUGAL"
+   },
+   {
+    "code": "eba_GA:RO",
+    "label": "ROMANIA"
+   },
+   {
+    "code": "eba_GA:RU",
+    "label": "RUSSIAN FEDERATION"
+   },
+   {
+    "code": "eba_GA:RS",
+    "label": "SERBIA"
+   },
+   {
+    "code": "eba_GA:SK",
+    "label": "SLOVAKIA"
+   },
+   {
+    "code": "eba_GA:SI",
+    "label": "SLOVENIA"
+   },
+   {
+    "code": "eba_GA:ES",
+    "label": "SPAIN"
+   },
+   {
+    "code": "eba_GA:SE",
+    "label": "SWEDEN"
+   },
+   {
+    "code": "eba_GA:CH",
+    "label": "SWITZERLAND"
+   },
+   {
+    "code": "eba_GA:TR",
+    "label": "TURKEY"
+   },
+   {
+    "code": "eba_GA:UA",
+    "label": "UKRAINE"
+   },
+   {
+    "code": "eba_GA:GB",
+    "label": "UNITED KINGDOM"
+   },
+   {
+    "code": "eba_GA:US",
+    "label": "UNITED STATES"
+   },
+   {
+    "code": "eba_GA:AF",
+    "label": "AFGHANISTAN"
+   },
+   {
+    "code": "eba_GA:AX",
+    "label": "ÅLAND ISLANDS"
+   },
+   {
+    "code": "eba_GA:DZ",
+    "label": "ALGERIA"
+   },
+   {
+    "code": "eba_GA:AS",
+    "label": "AMERICAN SAMOA"
+   },
+   {
+    "code": "eba_GA:AD",
+    "label": "ANDORRA"
+   },
+   {
+    "code": "eba_GA:AO",
+    "label": "ANGOLA"
+   },
+   {
+    "code": "eba_GA:AI",
+    "label": "ANGUILLA"
+   },
+   {
+    "code": "eba_GA:AQ",
+    "label": "ANTARCTICA"
+   },
+   {
+    "code": "eba_GA:AG",
+    "label": "ANTIGUA AND BARBUDA"
+   },
+   {
+    "code": "eba_GA:AR",
+    "label": "ARGENTINA"
+   },
+   {
+    "code": "eba_GA:AM",
+    "label": "ARMENIA"
+   },
+   {
+    "code": "eba_GA:AW",
+    "label": "ARUBA"
+   },
+   {
+    "code": "eba_GA:AU",
+    "label": "AUSTRALIA"
+   },
+   {
+    "code": "eba_GA:AZ",
+    "label": "AZERBAIJAN"
+   },
+   {
+    "code": "eba_GA:BS",
+    "label": "BAHAMAS"
+   },
+   {
+    "code": "eba_GA:BH",
+    "label": "BAHRAIN"
+   },
+   {
+    "code": "eba_GA:BD",
+    "label": "BANGLADESH"
+   },
+   {
+    "code": "eba_GA:BB",
+    "label": "BARBADOS"
+   },
+   {
+    "code": "eba_GA:BY",
+    "label": "BELARUS"
+   },
+   {
+    "code": "eba_GA:BZ",
+    "label": "BELIZE"
+   },
+   {
+    "code": "eba_GA:BJ",
+    "label": "BENIN"
+   },
+   {
+    "code": "eba_GA:BM",
+    "label": "BERMUDA"
+   },
+   {
+    "code": "eba_GA:BT",
+    "label": "BHUTAN"
+   },
+   {
+    "code": "eba_GA:BO",
+    "label": "BOLIVIA, PLURINATIONAL STATE OF"
+   },
+   {
+    "code": "eba_GA:BQ",
+    "label": "BONAIRE, SINT EUSTATIUS AND SABA"
+   },
+   {
+    "code": "eba_GA:BA",
+    "label": "BOSNIA AND HERZEGOVINA"
+   },
+   {
+    "code": "eba_GA:BW",
+    "label": "BOTSWANA"
+   },
+   {
+    "code": "eba_GA:BV",
+    "label": "BOUVET ISLAND"
+   },
+   {
+    "code": "eba_GA:BR",
+    "label": "BRAZIL"
+   },
+   {
+    "code": "eba_GA:IO",
+    "label": "BRITISH INDIAN OCEAN TERRITORY"
+   },
+   {
+    "code": "eba_GA:BN",
+    "label": "BRUNEI DARUSSALAM"
+   },
+   {
+    "code": "eba_GA:BF",
+    "label": "BURKINA FASO"
+   },
+   {
+    "code": "eba_GA:BI",
+    "label": "BURUNDI"
+   },
+   {
+    "code": "eba_GA:KH",
+    "label": "CAMBODIA"
+   },
+   {
+    "code": "eba_GA:CM",
+    "label": "CAMEROON"
+   },
+   {
+    "code": "eba_GA:CA",
+    "label": "CANADA"
+   },
+   {
+    "code": "eba_GA:CV",
+    "label": "CAPE VERDE"
+   },
+   {
+    "code": "eba_GA:KY",
+    "label": "CAYMAN ISLANDS"
+   },
+   {
+    "code": "eba_GA:CF",
+    "label": "CENTRAL AFRICAN REPUBLIC"
+   },
+   {
+    "code": "eba_GA:TD",
+    "label": "CHAD"
+   },
+   {
+    "code": "eba_GA:CL",
+    "label": "CHILE"
+   },
+   {
+    "code": "eba_GA:CN",
+    "label": "CHINA"
+   },
+   {
+    "code": "eba_GA:CX",
+    "label": "CHRISTMAS ISLAND"
+   },
+   {
+    "code": "eba_GA:CC",
+    "label": "COCOS (KEELING"
+   },
+   {
+    "code": "eba_GA:CO",
+    "label": "COLOMBIA"
+   },
+   {
+    "code": "eba_GA:KM",
+    "label": "COMOROS"
+   },
+   {
+    "code": "eba_GA:CG",
+    "label": "CONGO"
+   },
+   {
+    "code": "eba_GA:CD",
+    "label": "CONGO, THE DEMOCRATIC REPUBLIC OF THE"
+   },
+   {
+    "code": "eba_GA:CK",
+    "label": "COOK ISLANDS"
+   },
+   {
+    "code": "eba_GA:CR",
+    "label": "COSTA RICA"
+   },
+   {
+    "code": "eba_GA:CI",
+    "label": "CÔTE D'IVOIRE"
+   },
+   {
+    "code": "eba_GA:HR",
+    "label": "CROATIA"
+   },
+   {
+    "code": "eba_GA:CU",
+    "label": "CUBA"
+   },
+   {
+    "code": "eba_GA:CW",
+    "label": "CURAÇAO"
+   },
+   {
+    "code": "eba_GA:DJ",
+    "label": "DJIBOUTI"
+   },
+   {
+    "code": "eba_GA:DM",
+    "label": "DOMINICA"
+   },
+   {
+    "code": "eba_GA:DO",
+    "label": "DOMINICAN REPUBLIC"
+   },
+   {
+    "code": "eba_GA:EC",
+    "label": "ECUADOR"
+   },
+   {
+    "code": "eba_GA:EG",
+    "label": "EGYPT"
+   },
+   {
+    "code": "eba_GA:SV",
+    "label": "EL SALVADOR"
+   },
+   {
+    "code": "eba_GA:GQ",
+    "label": "EQUATORIAL GUINEA"
+   },
+   {
+    "code": "eba_GA:ER",
+    "label": "ERITREA"
+   },
+   {
+    "code": "eba_GA:ET",
+    "label": "ETHIOPIA"
+   },
+   {
+    "code": "eba_GA:FK",
+    "label": "FALKLAND ISLANDS (MALVINAS"
+   },
+   {
+    "code": "eba_GA:FO",
+    "label": "FAROE ISLANDS"
+   },
+   {
+    "code": "eba_GA:FJ",
+    "label": "FIJI"
+   },
+   {
+    "code": "eba_GA:GF",
+    "label": "FRENCH GUIANA"
+   },
+   {
+    "code": "eba_GA:PF",
+    "label": "FRENCH POLYNESIA"
+   },
+   {
+    "code": "eba_GA:TF",
+    "label": "FRENCH SOUTHERN TERRITORIES"
+   },
+   {
+    "code": "eba_GA:GA",
+    "label": "GABON"
+   },
+   {
+    "code": "eba_GA:GM",
+    "label": "GAMBIA"
+   },
+   {
+    "code": "eba_GA:GE",
+    "label": "GEORGIA"
+   },
+   {
+    "code": "eba_GA:GH",
+    "label": "GHANA"
+   },
+   {
+    "code": "eba_GA:GI",
+    "label": "GIBRALTAR"
+   },
+   {
+    "code": "eba_GA:GL",
+    "label": "GREENLAND"
+   },
+   {
+    "code": "eba_GA:GD",
+    "label": "GRENADA"
+   },
+   {
+    "code": "eba_GA:GP",
+    "label": "GUADELOUPE"
+   },
+   {
+    "code": "eba_GA:GU",
+    "label": "GUAM"
+   },
+   {
+    "code": "eba_GA:GT",
+    "label": "GUATEMALA"
+   },
+   {
+    "code": "eba_GA:GG",
+    "label": "GUERNSEY"
+   },
+   {
+    "code": "eba_GA:GN",
+    "label": "GUINEA"
+   },
+   {
+    "code": "eba_GA:GW",
+    "label": "GUINEA-BISSAU"
+   },
+   {
+    "code": "eba_GA:GY",
+    "label": "GUYANA"
+   },
+   {
+    "code": "eba_GA:HT",
+    "label": "HAITI"
+   },
+   {
+    "code": "eba_GA:HM",
+    "label": "HEARD ISLAND AND MCDONALD ISLANDS"
+   },
+   {
+    "code": "eba_GA:VA",
+    "label": "HOLY SEE (VATICAN CITY STATE"
+   },
+   {
+    "code": "eba_GA:HN",
+    "label": "HONDURAS"
+   },
+   {
+    "code": "eba_GA:HK",
+    "label": "HONG KONG"
+   },
+   {
+    "code": "eba_GA:IS",
+    "label": "ICELAND"
+   },
+   {
+    "code": "eba_GA:IN",
+    "label": "INDIA"
+   },
+   {
+    "code": "eba_GA:ID",
+    "label": "INDONESIA"
+   },
+   {
+    "code": "eba_GA:IR",
+    "label": "IRAN, ISLAMIC REPUBLIC OF"
+   },
+   {
+    "code": "eba_GA:IQ",
+    "label": "IRAQ"
+   },
+   {
+    "code": "eba_GA:IM",
+    "label": "ISLE OF MAN"
+   },
+   {
+    "code": "eba_GA:IL",
+    "label": "ISRAEL"
+   },
+   {
+    "code": "eba_GA:JM",
+    "label": "JAMAICA"
+   },
+   {
+    "code": "eba_GA:JE",
+    "label": "JERSEY"
+   },
+   {
+    "code": "eba_GA:JO",
+    "label": "JORDAN"
+   },
+   {
+    "code": "eba_GA:KZ",
+    "label": "KAZAKHSTAN"
+   },
+   {
+    "code": "eba_GA:KE",
+    "label": "KENYA"
+   },
+   {
+    "code": "eba_GA:KI",
+    "label": "KIRIBATI"
+   },
+   {
+    "code": "eba_GA:KP",
+    "label": "KOREA, DEMOCRATIC PEOPLE'S REPUBLIC OF"
+   },
+   {
+    "code": "eba_GA:KR",
+    "label": "KOREA, REPUBLIC OF"
+   },
+   {
+    "code": "eba_GA:KW",
+    "label": "KUWAIT"
+   },
+   {
+    "code": "eba_GA:KG",
+    "label": "KYRGYZSTAN"
+   },
+   {
+    "code": "eba_GA:LA",
+    "label": "LAO PEOPLE'S DEMOCRATIC REPUBLIC"
+   },
+   {
+    "code": "eba_GA:LB",
+    "label": "LEBANON"
+   },
+   {
+    "code": "eba_GA:LS",
+    "label": "LESOTHO"
+   },
+   {
+    "code": "eba_GA:LR",
+    "label": "LIBERIA"
+   },
+   {
+    "code": "eba_GA:LY",
+    "label": "LIBYA"
+   },
+   {
+    "code": "eba_GA:LI",
+    "label": "LIECHTENSTEIN"
+   },
+   {
+    "code": "eba_GA:MO",
+    "label": "MACAO"
+   },
+   {
+    "code": "eba_GA:MG",
+    "label": "MADAGASCAR"
+   },
+   {
+    "code": "eba_GA:MW",
+    "label": "MALAWI"
+   },
+   {
+    "code": "eba_GA:MY",
+    "label": "MALAYSIA"
+   },
+   {
+    "code": "eba_GA:MV",
+    "label": "MALDIVES"
+   },
+   {
+    "code": "eba_GA:ML",
+    "label": "MALI"
+   },
+   {
+    "code": "eba_GA:MH",
+    "label": "MARSHALL ISLANDS"
+   },
+   {
+    "code": "eba_GA:MQ",
+    "label": "MARTINIQUE"
+   },
+   {
+    "code": "eba_GA:MR",
+    "label": "MAURITANIA"
+   },
+   {
+    "code": "eba_GA:MU",
+    "label": "MAURITIUS"
+   },
+   {
+    "code": "eba_GA:YT",
+    "label": "MAYOTTE"
+   },
+   {
+    "code": "eba_GA:MX",
+    "label": "MEXICO"
+   },
+   {
+    "code": "eba_GA:FM",
+    "label": "MICRONESIA, FEDERATED STATES OF"
+   },
+   {
+    "code": "eba_GA:MD",
+    "label": "MOLDOVA, REPUBLIC OF"
+   },
+   {
+    "code": "eba_GA:MC",
+    "label": "MONACO"
+   },
+   {
+    "code": "eba_GA:MN",
+    "label": "MONGOLIA"
+   },
+   {
+    "code": "eba_GA:ME",
+    "label": "MONTENEGRO"
+   },
+   {
+    "code": "eba_GA:MS",
+    "label": "MONTSERRAT"
+   },
+   {
+    "code": "eba_GA:MA",
+    "label": "MOROCCO"
+   },
+   {
+    "code": "eba_GA:MZ",
+    "label": "MOZAMBIQUE"
+   },
+   {
+    "code": "eba_GA:MM",
+    "label": "MYANMAR"
+   },
+   {
+    "code": "eba_GA:NA",
+    "label": "NAMIBIA"
+   },
+   {
+    "code": "eba_GA:NR",
+    "label": "NAURU"
+   },
+   {
+    "code": "eba_GA:NP",
+    "label": "NEPAL"
+   },
+   {
+    "code": "eba_GA:NC",
+    "label": "NEW CALEDONIA"
+   },
+   {
+    "code": "eba_GA:NZ",
+    "label": "NEW ZEALAND"
+   },
+   {
+    "code": "eba_GA:NI",
+    "label": "NICARAGUA"
+   },
+   {
+    "code": "eba_GA:NE",
+    "label": "NIGER"
+   },
+   {
+    "code": "eba_GA:NG",
+    "label": "NIGERIA"
+   },
+   {
+    "code": "eba_GA:NU",
+    "label": "NIUE"
+   },
+   {
+    "code": "eba_GA:NF",
+    "label": "NORFOLK ISLAND"
+   },
+   {
+    "code": "eba_GA:MP",
+    "label": "NORTHERN MARIANA ISLANDS"
+   },
+   {
+    "code": "eba_GA:OM",
+    "label": "OMAN"
+   },
+   {
+    "code": "eba_GA:PK",
+    "label": "PAKISTAN"
+   },
+   {
+    "code": "eba_GA:PW",
+    "label": "PALAU"
+   },
+   {
+    "code": "eba_GA:PS",
+    "label": "PALESTINIAN TERRITORY, OCCUPIED"
+   },
+   {
+    "code": "eba_GA:PA",
+    "label": "PANAMA"
+   },
+   {
+    "code": "eba_GA:PG",
+    "label": "PAPUA NEW GUINEA"
+   },
+   {
+    "code": "eba_GA:PY",
+    "label": "PARAGUAY"
+   },
+   {
+    "code": "eba_GA:PE",
+    "label": "PERU"
+   },
+   {
+    "code": "eba_GA:PH",
+    "label": "PHILIPPINES"
+   },
+   {
+    "code": "eba_GA:PN",
+    "label": "PITCAIRN"
+   },
+   {
+    "code": "eba_GA:PR",
+    "label": "PUERTO RICO"
+   },
+   {
+    "code": "eba_GA:QA",
+    "label": "QATAR"
+   },
+   {
+    "code": "eba_GA:RE",
+    "label": "RÉUNION"
+   },
+   {
+    "code": "eba_GA:RW",
+    "label": "RWANDA"
+   },
+   {
+    "code": "eba_GA:BL",
+    "label": "SAINT BARTHÉLEMY"
+   },
+   {
+    "code": "eba_GA:SH",
+    "label": "SAINT HELENA, ASCENSION AND TRISTAN DA CUNHA"
+   },
+   {
+    "code": "eba_GA:KN",
+    "label": "SAINT KITTS AND NEVIS"
+   },
+   {
+    "code": "eba_GA:LC",
+    "label": "SAINT LUCIA"
+   },
+   {
+    "code": "eba_GA:MF",
+    "label": "SAINT MARTIN (FRENCH PART"
+   },
+   {
+    "code": "eba_GA:PM",
+    "label": "SAINT PIERRE AND MIQUELON"
+   },
+   {
+    "code": "eba_GA:VC",
+    "label": "SAINT VINCENT AND THE GRENADINES"
+   },
+   {
+    "code": "eba_GA:WS",
+    "label": "SAMOA"
+   },
+   {
+    "code": "eba_GA:SM",
+    "label": "SAN MARINO"
+   },
+   {
+    "code": "eba_GA:ST",
+    "label": "SAO TOME AND PRINCIPE"
+   },
+   {
+    "code": "eba_GA:SA",
+    "label": "SAUDI ARABIA"
+   },
+   {
+    "code": "eba_GA:SN",
+    "label": "SENEGAL"
+   },
+   {
+    "code": "eba_GA:SC",
+    "label": "SEYCHELLES"
+   },
+   {
+    "code": "eba_GA:SL",
+    "label": "SIERRA LEONE"
+   },
+   {
+    "code": "eba_GA:SG",
+    "label": "SINGAPORE"
+   },
+   {
+    "code": "eba_GA:SX",
+    "label": "SINT MAARTEN (DUTCH PART"
+   },
+   {
+    "code": "eba_GA:SB",
+    "label": "SOLOMON ISLANDS"
+   },
+   {
+    "code": "eba_GA:SO",
+    "label": "SOMALIA"
+   },
+   {
+    "code": "eba_GA:ZA",
+    "label": "SOUTH AFRICA"
+   },
+   {
+    "code": "eba_GA:GS",
+    "label": "SOUTH GEORGIA AND THE SOUTH SANDWICH ISLANDS"
+   },
+   {
+    "code": "eba_GA:SS",
+    "label": "SOUTH SUDAN"
+   },
+   {
+    "code": "eba_GA:LK",
+    "label": "SRI LANKA"
+   },
+   {
+    "code": "eba_GA:SD",
+    "label": "SUDAN"
+   },
+   {
+    "code": "eba_GA:SR",
+    "label": "SURINAME"
+   },
+   {
+    "code": "eba_GA:SJ",
+    "label": "SVALBARD AND JAN MAYEN"
+   },
+   {
+    "code": "eba_GA:SZ",
+    "label": "SWAZILAND"
+   },
+   {
+    "code": "eba_GA:SY",
+    "label": "SYRIAN ARAB REPUBLIC"
+   },
+   {
+    "code": "eba_GA:TW",
+    "label": "TAIWAN, PROVINCE OF CHINA"
+   },
+   {
+    "code": "eba_GA:TJ",
+    "label": "TAJIKISTAN"
+   },
+   {
+    "code": "eba_GA:TZ",
+    "label": "TANZANIA, UNITED REPUBLIC OF"
+   },
+   {
+    "code": "eba_GA:TH",
+    "label": "THAILAND"
+   },
+   {
+    "code": "eba_GA:TL",
+    "label": "TIMOR-LESTE"
+   },
+   {
+    "code": "eba_GA:TG",
+    "label": "TOGO"
+   },
+   {
+    "code": "eba_GA:TK",
+    "label": "TOKELAU"
+   },
+   {
+    "code": "eba_GA:TO",
+    "label": "TONGA"
+   },
+   {
+    "code": "eba_GA:TT",
+    "label": "TRINIDAD AND TOBAGO"
+   },
+   {
+    "code": "eba_GA:TN",
+    "label": "TUNISIA"
+   },
+   {
+    "code": "eba_GA:TM",
+    "label": "TURKMENISTAN"
+   },
+   {
+    "code": "eba_GA:TC",
+    "label": "TURKS AND CAICOS ISLANDS"
+   },
+   {
+    "code": "eba_GA:TV",
+    "label": "TUVALU"
+   },
+   {
+    "code": "eba_GA:UG",
+    "label": "UGANDA"
+   },
+   {
+    "code": "eba_GA:AE",
+    "label": "UNITED ARAB EMIRATES"
+   },
+   {
+    "code": "eba_GA:UM",
+    "label": "UNITED STATES MINOR OUTLYING ISLANDS"
+   },
+   {
+    "code": "eba_GA:UY",
+    "label": "URUGUAY"
+   },
+   {
+    "code": "eba_GA:UZ",
+    "label": "UZBEKISTAN"
+   },
+   {
+    "code": "eba_GA:VU",
+    "label": "VANUATU"
+   },
+   {
+    "code": "eba_GA:VE",
+    "label": "VENEZUELA, BOLIVARIAN REPUBLIC OF"
+   },
+   {
+    "code": "eba_GA:VN",
+    "label": "VIET NAM"
+   },
+   {
+    "code": "eba_GA:VG",
+    "label": "VIRGIN ISLANDS, BRITISH"
+   },
+   {
+    "code": "eba_GA:VI",
+    "label": "VIRGIN ISLANDS, U.S."
+   },
+   {
+    "code": "eba_GA:WF",
+    "label": "WALLIS AND FUTUNA"
+   },
+   {
+    "code": "eba_GA:EH",
+    "label": "WESTERN SAHARA"
+   },
+   {
+    "code": "eba_GA:YE",
+    "label": "YEMEN"
+   },
+   {
+    "code": "eba_GA:ZM",
+    "label": "ZAMBIA"
+   },
+   {
+    "code": "eba_GA:ZW",
+    "label": "ZIMBABWE"
+   },
+   {
+    "code": "eba_GA:x28",
+    "label": "Other Countries"
+   }
+  ],
+  "LISTCURRENCY": [
+   {
+    "code": "eba_CU:AED",
+    "label": "UAE Dirham"
+   },
+   {
+    "code": "eba_CU:AFN",
+    "label": "Afghani"
+   },
+   {
+    "code": "eba_CU:ALL",
+    "label": "Lek"
+   },
+   {
+    "code": "eba_CU:AMD",
+    "label": "Armenian Dram"
+   },
+   {
+    "code": "eba_CU:ANG",
+    "label": "Netherlands Antillean Guilder"
+   },
+   {
+    "code": "eba_CU:AOA",
+    "label": "Kwanza"
+   },
+   {
+    "code": "eba_CU:ARS",
+    "label": "Argentine Peso"
+   },
+   {
+    "code": "eba_CU:AUD",
+    "label": "Australian Dollar"
+   },
+   {
+    "code": "eba_CU:AWG",
+    "label": "Aruban Florin"
+   },
+   {
+    "code": "eba_CU:AZN",
+    "label": "Azerbaijanian Manat"
+   },
+   {
+    "code": "eba_CU:BAM",
+    "label": "Convertible Mark"
+   },
+   {
+    "code": "eba_CU:BBD",
+    "label": "Barbados Dollar"
+   },
+   {
+    "code": "eba_CU:BDT",
+    "label": "Taka"
+   },
+   {
+    "code": "eba_CU:BGN",
+    "label": "Bulgarian Lev"
+   },
+   {
+    "code": "eba_CU:BHD",
+    "label": "Bahraini Dinar"
+   },
+   {
+    "code": "eba_CU:BIF",
+    "label": "Burundi Franc"
+   },
+   {
+    "code": "eba_CU:BMD",
+    "label": "Bermudian Dollar"
+   },
+   {
+    "code": "eba_CU:BND",
+    "label": "Brunei Dollar"
+   },
+   {
+    "code": "eba_CU:BOB",
+    "label": "Boliviano"
+   },
+   {
+    "code": "eba_CU:BOV",
+    "label": "Mvdol"
+   },
+   {
+    "code": "eba_CU:BRL",
+    "label": "Brazilian Real"
+   },
+   {
+    "code": "eba_CU:BSD",
+    "label": "Bahamian Dollar"
+   },
+   {
+    "code": "eba_CU:BTN",
+    "label": "Ngultrum"
+   },
+   {
+    "code": "eba_CU:BWP",
+    "label": "Pula"
+   },
+   {
+    "code": "eba_CU:BYR",
+    "label": "Belarussian Ruble (2000 Series)"
+   },
+   {
+    "code": "eba_CU:BYN",
+    "label": "Belarusian Ruble"
+   },
+   {
+    "code": "eba_CU:BZD",
+    "label": "Belize Dollar"
+   },
+   {
+    "code": "eba_CU:CAD",
+    "label": "Canadian Dollar"
+   },
+   {
+    "code": "eba_CU:CDF",
+    "label": "Congolese Franc"
+   },
+   {
+    "code": "eba_CU:CHE",
+    "label": "WIR Euro"
+   },
+   {
+    "code": "eba_CU:CHF",
+    "label": "Swiss Franc"
+   },
+   {
+    "code": "eba_CU:CHW",
+    "label": "WIR Franc"
+   },
+   {
+    "code": "eba_CU:CLF",
+    "label": "Unidades de fomento"
+   },
+   {
+    "code": "eba_CU:CLP",
+    "label": "Chilean Peso"
+   },
+   {
+    "code": "eba_CU:CNY",
+    "label": "Yuan Renminbi"
+   },
+   {
+    "code": "eba_CU:COP",
+    "label": "Colombian Peso"
+   },
+   {
+    "code": "eba_CU:COU",
+    "label": "Unidad de Valor Real"
+   },
+   {
+    "code": "eba_CU:CRC",
+    "label": "Costa Rican Colon"
+   },
+   {
+    "code": "eba_CU:CUC",
+    "label": "Peso Convertible"
+   },
+   {
+    "code": "eba_CU:CUP",
+    "label": "Cuban Peso"
+   },
+   {
+    "code": "eba_CU:CVE",
+    "label": "Cape Verde Escudo"
+   },
+   {
+    "code": "eba_CU:CZK",
+    "label": "Czech Koruna"
+   },
+   {
+    "code": "eba_CU:DJF",
+    "label": "Djibouti Franc"
+   },
+   {
+    "code": "eba_CU:DKK",
+    "label": "Danish Krone"
+   },
+   {
+    "code": "eba_CU:DOP",
+    "label": "Dominican Peso"
+   },
+   {
+    "code": "eba_CU:DZD",
+    "label": "Algerian Dinar"
+   },
+   {
+    "code": "eba_CU:EGP",
+    "label": "Egyptian Pound"
+   },
+   {
+    "code": "eba_CU:ERN",
+    "label": "Nakfa"
+   },
+   {
+    "code": "eba_CU:ETB",
+    "label": "Ethiopian Birr"
+   },
+   {
+    "code": "eba_CU:EUR",
+    "label": "Euro"
+   },
+   {
+    "code": "eba_CU:FJD",
+    "label": "Fiji Dollar"
+   },
+   {
+    "code": "eba_CU:FKP",
+    "label": "Falkland Islands Pound"
+   },
+   {
+    "code": "eba_CU:GBP",
+    "label": "Pound Sterling"
+   },
+   {
+    "code": "eba_CU:GEL",
+    "label": "Lari"
+   },
+   {
+    "code": "eba_CU:GHS",
+    "label": "Ghana Cedi"
+   },
+   {
+    "code": "eba_CU:GIP",
+    "label": "Gibraltar Pound"
+   },
+   {
+    "code": "eba_CU:GMD",
+    "label": "Dalasi"
+   },
+   {
+    "code": "eba_CU:GNF",
+    "label": "Guinea Franc"
+   },
+   {
+    "code": "eba_CU:GTQ",
+    "label": "Quetzal"
+   },
+   {
+    "code": "eba_CU:GYD",
+    "label": "Guyana Dollar"
+   },
+   {
+    "code": "eba_CU:HKD",
+    "label": "Hong Kong Dollar"
+   },
+   {
+    "code": "eba_CU:HNL",
+    "label": "Lempira"
+   },
+   {
+    "code": "eba_CU:HTG",
+    "label": "Gourde"
+   },
+   {
+    "code": "eba_CU:HUF",
+    "label": "Forint"
+   },
+   {
+    "code": "eba_CU:IDR",
+    "label": "Rupiah"
+   },
+   {
+    "code": "eba_CU:ILS",
+    "label": "New Israeli Sheqel"
+   },
+   {
+    "code": "eba_CU:INR",
+    "label": "Indian Rupee"
+   },
+   {
+    "code": "eba_CU:IQD",
+    "label": "Iraqi Dinar"
+   },
+   {
+    "code": "eba_CU:IRR",
+    "label": "Iranian Rial"
+   },
+   {
+    "code": "eba_CU:ISK",
+    "label": "Iceland Krona"
+   },
+   {
+    "code": "eba_CU:JMD",
+    "label": "Jamaican Dollar"
+   },
+   {
+    "code": "eba_CU:JOD",
+    "label": "Jordanian Dinar"
+   },
+   {
+    "code": "eba_CU:JPY",
+    "label": "Yen"
+   },
+   {
+    "code": "eba_CU:KES",
+    "label": "Kenyan Shilling"
+   },
+   {
+    "code": "eba_CU:KGS",
+    "label": "Som"
+   },
+   {
+    "code": "eba_CU:KHR",
+    "label": "Riel"
+   },
+   {
+    "code": "eba_CU:KMF",
+    "label": "Comoro Franc"
+   },
+   {
+    "code": "eba_CU:KPW",
+    "label": "North Korean Won"
+   },
+   {
+    "code": "eba_CU:KRW",
+    "label": "Won"
+   },
+   {
+    "code": "eba_CU:KWD",
+    "label": "Kuwaiti Dinar"
+   },
+   {
+    "code": "eba_CU:KYD",
+    "label": "Cayman Islands Dollar"
+   },
+   {
+    "code": "eba_CU:KZT",
+    "label": "Tenge"
+   },
+   {
+    "code": "eba_CU:LAK",
+    "label": "Kip"
+   },
+   {
+    "code": "eba_CU:LBP",
+    "label": "Lebanese Pound"
+   },
+   {
+    "code": "eba_CU:LKR",
+    "label": "Sri Lanka Rupee"
+   },
+   {
+    "code": "eba_CU:LRD",
+    "label": "Liberian Dollar"
+   },
+   {
+    "code": "eba_CU:LSL",
+    "label": "Loti"
+   },
+   {
+    "code": "eba_CU:LTL",
+    "label": "Lithuanian Litas"
+   },
+   {
+    "code": "eba_CU:LVL",
+    "label": "Latvian Lats"
+   },
+   {
+    "code": "eba_CU:LYD",
+    "label": "Libyan Dinar"
+   },
+   {
+    "code": "eba_CU:MAD",
+    "label": "Moroccan Dirham"
+   },
+   {
+    "code": "eba_CU:MDL",
+    "label": "Moldovan Leu"
+   },
+   {
+    "code": "eba_CU:MGA",
+    "label": "Malagasy Ariary"
+   },
+   {
+    "code": "eba_CU:MKD",
+    "label": "Denar"
+   },
+   {
+    "code": "eba_CU:MMK",
+    "label": "Kyat"
+   },
+   {
+    "code": "eba_CU:MNT",
+    "label": "Tugrik"
+   },
+   {
+    "code": "eba_CU:MOP",
+    "label": "Pataca"
+   },
+   {
+    "code": "eba_CU:MRO",
+    "label": "Ouguiya"
+   },
+   {
+    "code": "eba_CU:MUR",
+    "label": "Mauritius Rupee"
+   },
+   {
+    "code": "eba_CU:MVR",
+    "label": "Rufiyaa"
+   },
+   {
+    "code": "eba_CU:MWK",
+    "label": "Kwacha"
+   },
+   {
+    "code": "eba_CU:MXN",
+    "label": "Mexican Peso"
+   },
+   {
+    "code": "eba_CU:MYR",
+    "label": "Malaysian Ringgit"
+   },
+   {
+    "code": "eba_CU:MZN",
+    "label": "Mozambique Metical"
+   },
+   {
+    "code": "eba_CU:NAD",
+    "label": "Namibia Dollar"
+   },
+   {
+    "code": "eba_CU:NGN",
+    "label": "Naira"
+   },
+   {
+    "code": "eba_CU:NIO",
+    "label": "Cordoba Oro"
+   },
+   {
+    "code": "eba_CU:NOK",
+    "label": "Norwegian Krone"
+   },
+   {
+    "code": "eba_CU:NPR",
+    "label": "Nepalese Rupee"
+   },
+   {
+    "code": "eba_CU:NZD",
+    "label": "New Zealand Dollar"
+   },
+   {
+    "code": "eba_CU:OMR",
+    "label": "Rial Omani"
+   },
+   {
+    "code": "eba_CU:PAB",
+    "label": "Balboa"
+   },
+   {
+    "code": "eba_CU:PEN",
+    "label": "Nuevo Sol"
+   },
+   {
+    "code": "eba_CU:PGK",
+    "label": "Kina"
+   },
+   {
+    "code": "eba_CU:PHP",
+    "label": "Philippine Peso"
+   },
+   {
+    "code": "eba_CU:PKR",
+    "label": "Pakistan Rupee"
+   },
+   {
+    "code": "eba_CU:PLN",
+    "label": "Zloty"
+   },
+   {
+    "code": "eba_CU:PYG",
+    "label": "Guarani"
+   },
+   {
+    "code": "eba_CU:QAR",
+    "label": "Qatari Rial"
+   },
+   {
+    "code": "eba_CU:RON",
+    "label": "New Romanian Leu"
+   },
+   {
+    "code": "eba_CU:RSD",
+    "label": "Serbian Dinar"
+   },
+   {
+    "code": "eba_CU:RUB",
+    "label": "Russian Ruble"
+   },
+   {
+    "code": "eba_CU:RWF",
+    "label": "Rwanda Franc"
+   },
+   {
+    "code": "eba_CU:SAR",
+    "label": "Saudi Riyal"
+   },
+   {
+    "code": "eba_CU:SBD",
+    "label": "Solomon Islands Dollar"
+   },
+   {
+    "code": "eba_CU:SCR",
+    "label": "Seychelles Rupee"
+   },
+   {
+    "code": "eba_CU:SDG",
+    "label": "Sudanese Pound"
+   },
+   {
+    "code": "eba_CU:SEK",
+    "label": "Swedish Krona"
+   },
+   {
+    "code": "eba_CU:SGD",
+    "label": "Singapore Dollar"
+   },
+   {
+    "code": "eba_CU:SHP",
+    "label": "Saint Helena Pound"
+   },
+   {
+    "code": "eba_CU:SLL",
+    "label": "Leone"
+   },
+   {
+    "code": "eba_CU:SOS",
+    "label": "Somali Shilling"
+   },
+   {
+    "code": "eba_CU:SRD",
+    "label": "Surinam Dollar"
+   },
+   {
+    "code": "eba_CU:SSP",
+    "label": "South Sudanese Pound"
+   },
+   {
+    "code": "eba_CU:STD",
+    "label": "Dobra"
+   },
+   {
+    "code": "eba_CU:SVC",
+    "label": "El Salvador Colon"
+   },
+   {
+    "code": "eba_CU:SYP",
+    "label": "Syrian Pound"
+   },
+   {
+    "code": "eba_CU:SZL",
+    "label": "Lilangeni"
+   },
+   {
+    "code": "eba_CU:THB",
+    "label": "Baht"
+   },
+   {
+    "code": "eba_CU:TJS",
+    "label": "Somoni"
+   },
+   {
+    "code": "eba_CU:TMT",
+    "label": "Turkmenistan New Manat"
+   },
+   {
+    "code": "eba_CU:TND",
+    "label": "Tunisian Dinar"
+   },
+   {
+    "code": "eba_CU:TOP",
+    "label": "Pa’anga"
+   },
+   {
+    "code": "eba_CU:TRY",
+    "label": "Turkish Lira"
+   },
+   {
+    "code": "eba_CU:TTD",
+    "label": "Trinidad and Tobago Dollar"
+   },
+   {
+    "code": "eba_CU:TWD",
+    "label": "New Taiwan Dollar"
+   },
+   {
+    "code": "eba_CU:TZS",
+    "label": "Tanzanian Shilling"
+   },
+   {
+    "code": "eba_CU:UAH",
+    "label": "Hryvnia"
+   },
+   {
+    "code": "eba_CU:UGX",
+    "label": "Uganda Shilling"
+   },
+   {
+    "code": "eba_CU:USD",
+    "label": "US Dollar"
+   },
+   {
+    "code": "eba_CU:UYI",
+    "label": "Uruguay Peso en Unidades Indexadas (URUIURUI)"
+   },
+   {
+    "code": "eba_CU:UYU",
+    "label": "Peso Uruguayo"
+   },
+   {
+    "code": "eba_CU:UZS",
+    "label": "Uzbekistan Sum"
+   },
+   {
+    "code": "eba_CU:VEF",
+    "label": "Bolivar"
+   },
+   {
+    "code": "eba_CU:VND",
+    "label": "Dong"
+   },
+   {
+    "code": "eba_CU:VUV",
+    "label": "Vatu"
+   },
+   {
+    "code": "eba_CU:WST",
+    "label": "Tala"
+   },
+   {
+    "code": "eba_CU:XCD",
+    "label": "East Caribbean Dollar"
+   },
+   {
+    "code": "eba_CU:YER",
+    "label": "Yemeni Rial"
+   },
+   {
+    "code": "eba_CU:ZAR",
+    "label": "Rand"
+   },
+   {
+    "code": "eba_CU:ZMK",
+    "label": "Zambian Kwacha (replaced January 1, 2013)"
+   },
+   {
+    "code": "eba_CU:ZMW",
+    "label": "Zambian Kwacha"
+   },
+   {
+    "code": "eba_CU:ZWL",
+    "label": "Zimbabwe Dollar"
+   },
+   {
+    "code": "eba_CU:x46",
+    "label": "Other Currency (open axis tables)"
+   },
+   {
+    "code": "eba_CU:XPF",
+    "label": "CFP Franc"
+   },
+   {
+    "code": "eba_CU:CNH",
+    "label": "Off-shore Yuan Renminbi"
+   }
+  ],
+  "LISTANNEXIII": [
+   {
+    "code": "eba_TA:S01",
+    "label": "ICT project management"
+   },
+   {
+    "code": "eba_TA:S02",
+    "label": "ICT Development"
+   },
+   {
+    "code": "eba_TA:S03",
+    "label": "ICT help desk and first level support"
+   },
+   {
+    "code": "eba_TA:S04",
+    "label": "ICT security management services"
+   },
+   {
+    "code": "eba_TA:S05",
+    "label": "Provision of data"
+   },
+   {
+    "code": "eba_TA:S06",
+    "label": "Data analysis"
+   },
+   {
+    "code": "eba_TA:S07",
+    "label": "ICT, facilities and hosting services (excluding Cloud services)"
+   },
+   {
+    "code": "eba_TA:S08",
+    "label": "Computation"
+   },
+   {
+    "code": "eba_TA:S09",
+    "label": "Non-Cloud Data storage"
+   },
+   {
+    "code": "eba_TA:S10",
+    "label": "Telecom carrier"
+   },
+   {
+    "code": "eba_TA:S11",
+    "label": "Network infrastructure"
+   },
+   {
+    "code": "eba_TA:S12",
+    "label": "Hardware and physical devices"
+   },
+   {
+    "code": "eba_TA:S13",
+    "label": "Software licencing (excluding SaaS)"
+   },
+   {
+    "code": "eba_TA:S14",
+    "label": "ICT operation management (including maintenance)"
+   },
+   {
+    "code": "eba_TA:S15",
+    "label": "ICT Consulting"
+   },
+   {
+    "code": "eba_TA:S16",
+    "label": "ICT Risk management"
+   },
+   {
+    "code": "eba_TA:S17",
+    "label": "Cloud services: IaaS"
+   },
+   {
+    "code": "eba_TA:S18",
+    "label": "Cloud services: PaaS"
+   },
+   {
+    "code": "eba_TA:S19",
+    "label": "Cloud services: SaaS"
+   }
+  ],
+  "LISTBINARY": [
+   {
+    "code": "eba_BT:x28",
+    "label": "Yes"
+   },
+   {
+    "code": "eba_BT:x29",
+    "label": "No"
+   }
+  ],
+  "LIST0101040": [
+   {
+    "code": "eba_CT:x12",
+    "label": "Credit institutions"
+   },
+   {
+    "code": "eba_CT:x599",
+    "label": "Investment firms"
+   },
+   {
+    "code": "eba_CT:x643",
+    "label": "Central counterparties (CCPs"
+   },
+   {
+    "code": "eba_CT:x639",
+    "label": "Asset management companies"
+   },
+   {
+    "code": "eba_CT:x301",
+    "label": "account information service providers"
+   },
+   {
+    "code": "eba_CT:x302",
+    "label": "electronic money institutions"
+   },
+   {
+    "code": "eba_CT:x303",
+    "label": "crypto-asset service providers"
+   },
+   {
+    "code": "eba_CT:x304",
+    "label": "central security depository"
+   },
+   {
+    "code": "eba_CT:x305",
+    "label": "trading venues"
+   },
+   {
+    "code": "eba_CT:x306",
+    "label": "trade repositories"
+   },
+   {
+    "code": "eba_CT:x300",
+    "label": "payment institution"
+   },
+   {
+    "code": "eba_CT:x316",
+    "label": "other financial entity"
+   },
+   {
+    "code": "eba_CT:x315",
+    "label": "securitisation repository"
+   },
+   {
+    "code": "eba_CT:x314",
+    "label": "crowdfunding service providers"
+   },
+   {
+    "code": "eba_CT:x313",
+    "label": "administrator of critical benchmarks"
+   },
+   {
+    "code": "eba_CT:x312",
+    "label": "credit rating agency"
+   },
+   {
+    "code": "eba_CT:x311",
+    "label": "institutions for occupational retirement provision"
+   },
+   {
+    "code": "eba_CT:x320",
+    "label": "insurance intermediaries, reinsurance intermediaries and ancillary insurance intermediaries"
+   },
+   {
+    "code": "eba_CT:x309",
+    "label": "insurance and reinsurance undertakings"
+   },
+   {
+    "code": "eba_CT:x308",
+    "label": "data reporting service providers"
+   },
+   {
+    "code": "eba_CT:x307",
+    "label": "managers of alternative investment funds"
+   },
+   {
+    "code": "eba_CT:x318",
+    "label": "Non-financial entity: Other than ICT intra-group service provider"
+   },
+   {
+    "code": "eba_CT:x317",
+    "label": "Non-financial entity: ICT intra-group service provider"
+   },
+   {
+    "code": "eba_CT:x310",
+    "label": "issuers of asset-referenced tokens"
+   }
+  ],
+  "LIST0102050": [
+   {
+    "code": "eba_RP:x53",
+    "label": "Ultimate parent"
+   },
+   {
+    "code": "eba_RP:x551",
+    "label": "Parent other than ultimate parent"
+   },
+   {
+    "code": "eba_RP:x56",
+    "label": "Subsidiary"
+   },
+   {
+    "code": "eba_RP:x21",
+    "label": "Entities other than entities of the group"
+   },
+   {
+    "code": "eba_RP:x210",
+    "label": "Outsourcing"
+   }
+  ],
+  "LIST0201020": [
+   {
+    "code": "eba_CO:x1",
+    "label": "Standalone arrangement"
+   },
+   {
+    "code": "eba_CO:x2",
+    "label": "Overarching arrangement"
+   },
+   {
+    "code": "eba_CO:x3",
+    "label": "Subsequent or associated arrangement"
+   }
+  ],
+  "LIST0202090": [
+   {
+    "code": "eba_CO:x4",
+    "label": "Termination not for cause: Expired and not renewd"
+   },
+   {
+    "code": "eba_CO:x5",
+    "label": "Termination for cause: Provider in breach of applicable law, regulations or contractual provisions"
+   },
+   {
+    "code": "eba_CO:x6",
+    "label": "Termination for cause: Identified impediments of the provider capable of altering the supported function"
+   },
+   {
+    "code": "eba_CO:x7",
+    "label": "Termination for cause: provider's weaknesses regarding the management and security of sensitive data or information"
+   },
+   {
+    "code": "eba_CO:x8",
+    "label": "Termination: as requested by the competent authority"
+   },
+   {
+    "code": "eba_CO:x9",
+    "label": "Other reasons for termination"
+   }
+  ],
+  "LIST0202170": [
+   {
+    "code": "eba_ZZ:x791",
+    "label": "Low"
+   },
+   {
+    "code": "eba_ZZ:x792",
+    "label": "Medium"
+   },
+   {
+    "code": "eba_ZZ:x793",
+    "label": "High"
+   }
+  ],
+  "LIST0202180": [
+   {
+    "code": "eba_ZZ:x794",
+    "label": "Not significant"
+   },
+   {
+    "code": "eba_ZZ:x795",
+    "label": "Low reliance"
+   },
+   {
+    "code": "eba_ZZ:x796",
+    "label": "Material reliance"
+   },
+   {
+    "code": "eba_ZZ:x797",
+    "label": "Full reliance"
+   }
+  ],
+  "LIST0401030": [
+   {
+    "code": "eba_ZZ:x838",
+    "label": "branch of a financial entity"
+   },
+   {
+    "code": "eba_ZZ:x839",
+    "label": "not a branch"
+   }
+  ],
+  "LIST0501040": [
+   {
+    "code": "eba_CT:x212",
+    "label": "Legal person, excluding individual acting in a business capacity"
+   },
+   {
+    "code": "eba_CT:x213",
+    "label": "Individual acting in a business capacity"
+   }
+  ],
+  "LIST0601020": [
+   {
+    "code": "eba_TA:x185",
+    "label": "Non-Life Insurance: Classes 1 and 2: ‘Accident and Health Insurance’"
+   },
+   {
+    "code": "eba_TA:x186",
+    "label": "Non-Life Insurance: Classes 1 (fourth indent), 3, 7 and 10: ‘Motor Insurance’"
+   },
+   {
+    "code": "eba_TA:x187",
+    "label": "Non-Life Insurance: Classes 1 (fourth indent), 4, 6, 7 and 12: ‘Marine and Transport Insurance’"
+   },
+   {
+    "code": "eba_TA:x188",
+    "label": "Non-Life Insurance: Classes 1 (fourth indent), 5, 7 and 11: ‘Aviation Insurance’"
+   },
+   {
+    "code": "eba_TA:x189",
+    "label": "Non-Life Insurance: Classes 8 and 9: ‘Insurance against Fire and other Damage to Property’"
+   },
+   {
+    "code": "eba_TA:x190",
+    "label": "Non-Life Insurance: Classes 10, 11, 12 and 13: ‘Liability Insurance’"
+   },
+   {
+    "code": "eba_TA:x191",
+    "label": "Non-Life Insurance: Classes 14 and 15: ‘Credit and Suretyship Insurance’"
+   },
+   {
+    "code": "eba_TA:x192",
+    "label": "Non-Life Insurance: All classes, at the choice of the Member States, which shall notify the other Member States and the Commission of their choice"
+   },
+   {
+    "code": "eba_TA:x193",
+    "label": "Life Insurance: The life insurance referred to in points (a)(i), (ii) and (iii) of Article 2(3) excluding those referred to in II and III"
+   },
+   {
+    "code": "eba_TA:x194",
+    "label": "Life Insurance: Marriage assurance, birth assurance"
+   },
+   {
+    "code": "eba_TA:x195",
+    "label": "Life Insurance: The insurance referred to in points (a)(i) and (ii) of Article 2(3), which are linked to investment funds"
+   },
+   {
+    "code": "eba_TA:x196",
+    "label": "Life Insurance: Permanent health insurance, referred to in point (a)(iv) of Article 2(3)"
+   },
+   {
+    "code": "eba_TA:x197",
+    "label": "Life Insurance: Tontines, referred to in point (b)(i) of Article 2(3)"
+   },
+   {
+    "code": "eba_TA:x198",
+    "label": "Life Insurance: Capital redemption operations, referred to in point (b)(ii) of Article 2(3)"
+   },
+   {
+    "code": "eba_TA:x199",
+    "label": "Life Insurance: Management of group pension funds, referred to in point (b)(iii) and (iv) of Article 2(3)"
+   },
+   {
+    "code": "eba_TA:x200",
+    "label": "Life Insurance: The operations referred to in point (b)(v) of Article 2(3)"
+   },
+   {
+    "code": "eba_TA:x201",
+    "label": "Life Insurance: The operations referred to in Article 2(3)(c)"
+   },
+   {
+    "code": "eba_TA:x163",
+    "label": "Lending activities"
+   },
+   {
+    "code": "eba_TA:x164",
+    "label": "Financial leasing"
+   },
+   {
+    "code": "eba_TA:x165",
+    "label": "Issuing and administering other means of payment"
+   },
+   {
+    "code": "eba_TA:x166",
+    "label": "Guarantees and commitments"
+   },
+   {
+    "code": "eba_TA:x167",
+    "label": "Guarantees and commitments related to securities lending and borrowing, within the meaning of point 6 of Annex I to Directive 2013/36/EU"
+   },
+   {
+    "code": "eba_TA:x168",
+    "label": "Trading for own account or for account of customers"
+   },
+   {
+    "code": "eba_TA:x169",
+    "label": "Participation in securities issues and the provision of services relating to such issues"
+   },
+   {
+    "code": "eba_TA:x28",
+    "label": "Payment services"
+   },
+   {
+    "code": "eba_TA:x170",
+    "label": "Advisory services"
+   },
+   {
+    "code": "eba_TA:x171",
+    "label": "Money broking"
+   },
+   {
+    "code": "eba_TA:x172",
+    "label": "Portfolio management and advice"
+   },
+   {
+    "code": "eba_TA:x173",
+    "label": "Dealing on own account"
+   },
+   {
+    "code": "eba_TA:x174",
+    "label": "Safekeeping and administration of securities"
+   },
+   {
+    "code": "eba_TA:x175",
+    "label": "Safekeeping and administration of financial instruments for the account of clients"
+   },
+   {
+    "code": "eba_TA:x176",
+    "label": "safe-keeping and administration in relation to shares or units of collective investment undertakings"
+   },
+   {
+    "code": "eba_TA:x177",
+    "label": "non-core services (safekeeping and administration in relation to units of collective investment undertakings)"
+   },
+   {
+    "code": "eba_TA:x178",
+    "label": "Safe custody services"
+   },
+   {
+    "code": "eba_TA:x179",
+    "label": "Credit reference services"
+   },
+   {
+    "code": "eba_TA:x180",
+    "label": "Issuing electronic money"
+   },
+   {
+    "code": "eba_TA:x181",
+    "label": "reception and transmission of orders for crypto-assets on behalf of clients"
+   },
+   {
+    "code": "eba_TA:x182",
+    "label": "Portfolio management on crypto-assets"
+   },
+   {
+    "code": "eba_TA:x183",
+    "label": "management of portfolios of investments (AIFMD)"
+   },
+   {
+    "code": "eba_TA:x184",
+    "label": "management of portfolios of investments (UCITSD)"
+   },
+   {
+    "code": "eba_TA:x202",
+    "label": "insurance distribution"
+   },
+   {
+    "code": "eba_TA:x203",
+    "label": "reinsurance distribution"
+   },
+   {
+    "code": "eba_TA:x204",
+    "label": "Investment services related to the underlying of the derivatives"
+   },
+   {
+    "code": "eba_TA:x205",
+    "label": "Retirement-benefit related operations and activities arising therefrom"
+   },
+   {
+    "code": "eba_TA:x206",
+    "label": "issuance of credit ratings"
+   },
+   {
+    "code": "eba_TA:x207",
+    "label": "administering the arrangements for determining a benchmark"
+   },
+   {
+    "code": "eba_TA:x208",
+    "label": "collecting, analysing or processing input data for the purpose of determining a benchmark"
+   },
+   {
+    "code": "eba_TA:x209",
+    "label": "determining a benchmark through the application of a formula or other method of calculation or by an assessment of input data provided for that purpose"
+   },
+   {
+    "code": "eba_TA:x210",
+    "label": "publication of benchmark"
+   },
+   {
+    "code": "eba_TA:x211",
+    "label": "Provision of crowdfunding services"
+   },
+   {
+    "code": "eba_TA:x212",
+    "label": "ancillary non-securitisation services"
+   },
+   {
+    "code": "eba_TA:x213",
+    "label": "ancillary securitisation services"
+   },
+   {
+    "code": "eba_TA:x214",
+    "label": "collection and maintenance of the records of derivatives (non-SFTs)"
+   },
+   {
+    "code": "eba_TA:x215",
+    "label": "collection and maintenance of the records of SFTs"
+   },
+   {
+    "code": "eba_TA:x216",
+    "label": "collection and maintenance of the records of securitisations"
+   },
+   {
+    "code": "eba_TA:x217",
+    "label": "activity as approved publication arrangement"
+   },
+   {
+    "code": "eba_TA:x218",
+    "label": "activity as consolidated tape provider"
+   },
+   {
+    "code": "eba_TA:x219",
+    "label": "activity as approved reporting mechanism"
+   },
+   {
+    "code": "eba_TA:x220",
+    "label": "Services enabling cash to be placed on a payment account as well as all the operations required for operating a payment account"
+   },
+   {
+    "code": "eba_TA:x221",
+    "label": "Services enabling cash withdrawals from a payment account as well as all the operations required for operating a payment account"
+   },
+   {
+    "code": "eba_TA:x222",
+    "label": "Execution of payment transactions, including transfers of funds on a payment account with the user’s payment service provider or with another payment service provider"
+   },
+   {
+    "code": "eba_TA:x223",
+    "label": "Execution of payment transactions where the funds are covered by a credit line for a payment service user"
+   },
+   {
+    "code": "eba_TA:x224",
+    "label": "Issuing of payment instruments and/or acquiring of payment transactions"
+   },
+   {
+    "code": "eba_TA:x225",
+    "label": "Money remittance"
+   },
+   {
+    "code": "eba_TA:x226",
+    "label": "Payment initiation services"
+   },
+   {
+    "code": "eba_TA:x227",
+    "label": "Account information services"
+   },
+   {
+    "code": "eba_TA:x228",
+    "label": "Providing custody and administration of crypto-assets on behalf of clients"
+   },
+   {
+    "code": "eba_TA:x229",
+    "label": "operation of a trading platform for crypto-assets"
+   },
+   {
+    "code": "eba_TA:x230",
+    "label": "Operation of a Regulated Market"
+   },
+   {
+    "code": "eba_TA:x231",
+    "label": "exchange of crypto-assets for funds"
+   },
+   {
+    "code": "eba_TA:x232",
+    "label": "exchange of crypto-assets for other crypto-assets"
+   },
+   {
+    "code": "eba_TA:x233",
+    "label": "execution of orders for crypto-assets on behalf of clients"
+   },
+   {
+    "code": "eba_TA:x234",
+    "label": "placing of crypto-assets"
+   },
+   {
+    "code": "eba_TA:x235",
+    "label": "providing advice on crypto-assets"
+   },
+   {
+    "code": "eba_TA:x236",
+    "label": "providing transfer services for crypto-assets on behalf of clients"
+   },
+   {
+    "code": "eba_TA:x237",
+    "label": "issuance of asset-referenced tokens"
+   },
+   {
+    "code": "eba_TA:x238",
+    "label": "notary service"
+   },
+   {
+    "code": "eba_TA:x239",
+    "label": "central maintenance service"
+   },
+   {
+    "code": "eba_TA:x240",
+    "label": "settlement service"
+   },
+   {
+    "code": "eba_TA:x241",
+    "label": "Organising a securities lending mechanism, as agent among participants of a securities settlement system"
+   },
+   {
+    "code": "eba_TA:x242",
+    "label": "collateral management services"
+   },
+   {
+    "code": "eba_TA:x243",
+    "label": "general collateral management services"
+   },
+   {
+    "code": "eba_TA:x244",
+    "label": "Establishing CSD links, providing, maintaining or operating securities accounts in relation to the settlement service, collateral management, other ancillary services"
+   },
+   {
+    "code": "eba_TA:x245",
+    "label": "Settlement matching, instruction routing, trade confirmation, trade verification"
+   },
+   {
+    "code": "eba_TA:x246",
+    "label": "Services related to shareholders’ registers"
+   },
+   {
+    "code": "eba_TA:x247",
+    "label": "Supporting the processing of corporate actions, including tax, general meetings and information services"
+   },
+   {
+    "code": "eba_TA:x248",
+    "label": "New issue services, including allocation and management of ISIN codes and similar codes"
+   },
+   {
+    "code": "eba_TA:x249",
+    "label": "Instruction routing and processing, fee collection and processing and related reporting"
+   },
+   {
+    "code": "eba_TA:x250",
+    "label": "Providing regulatory reporting"
+   },
+   {
+    "code": "eba_TA:x251",
+    "label": "\"Providing information, data and statistics to market/census bureaus or other governmental or inter-governmental entities\""
+   },
+   {
+    "code": "eba_TA:x252",
+    "label": "Providing IT services"
+   },
+   {
+    "code": "eba_TA:x253",
+    "label": "\"Providing cash accounts to, and accepting deposits from, participants in a securities settlement system and holders of securities accounts, within the meaning of point 1 of Annex I to Directive 2013/36/EU\""
+   },
+   {
+    "code": "eba_TA:x254",
+    "label": "\"Providing cash credit for reimbursement no later than the following business day, cash lending to pre-finance corporate actions and lending securities to holders of securities accounts, within the meaning of point 2 of Annex I to Directive 2013/36/EU\""
+   },
+   {
+    "code": "eba_TA:x255",
+    "label": "\" Payment services involving processing of cash and foreign exchange transactions, within the meaning of point 4 of Annex I to Directive 2013/36/EU\""
+   },
+   {
+    "code": "eba_TA:x256",
+    "label": "Treasury activities involving foreign exchange and transferable securities related to managing participants’ long balances"
+   },
+   {
+    "code": "eba_TA:x257",
+    "label": "Any other NCA-permitted non-banking-type ancillary services not specified in Annex of Regulation (EU) No 909/2014 (CSDR) - Section B"
+   },
+   {
+    "code": "eba_TA:x258",
+    "label": "Any other NCA-permitted Banking-type ancillary services not specified in Annex of Regulation (EU) No 909/2014 (CSDR) - Section C"
+   },
+   {
+    "code": "eba_TA:x259",
+    "label": "interposition between counterparties"
+   },
+   {
+    "code": "eba_TA:x260",
+    "label": "risk management"
+   },
+   {
+    "code": "eba_TA:x261",
+    "label": "legal and fund management accounting services"
+   },
+   {
+    "code": "eba_TA:x262",
+    "label": "customer inquiries"
+   },
+   {
+    "code": "eba_TA:x263",
+    "label": "valuation and pricing, including tax returns"
+   },
+   {
+    "code": "eba_TA:x264",
+    "label": "regulatory compliance monitoring"
+   },
+   {
+    "code": "eba_TA:x265",
+    "label": "maintenance of unit-/shareholder register"
+   },
+   {
+    "code": "eba_TA:x266",
+    "label": "unit/shares issues and redemptions"
+   },
+   {
+    "code": "eba_TA:x267",
+    "label": "maintenance of unit-holder register"
+   },
+   {
+    "code": "eba_TA:x268",
+    "label": "unit issues and redemptions"
+   },
+   {
+    "code": "eba_TA:x269",
+    "label": "contract settlements (including certificate dispatch)"
+   },
+   {
+    "code": "eba_TA:x270",
+    "label": "distribution of income"
+   },
+   {
+    "code": "eba_TA:x271",
+    "label": "record keeping"
+   },
+   {
+    "code": "eba_TA:x272",
+    "label": "Marketing"
+   },
+   {
+    "code": "eba_TA:x273",
+    "label": "services necessary to meet the fiduciary duties of the AIFM"
+   },
+   {
+    "code": "eba_TA:x274",
+    "label": "investment advice concerning one or more of the instruments listed in Annex I, Section C to Directive 2004/39/EC"
+   },
+   {
+    "code": "eba_TA:x275",
+    "label": "Ancillary services"
+   },
+   {
+    "code": "eba_TA:x104",
+    "label": "Foreign exchange services"
+   },
+   {
+    "code": "eba_TA:x133",
+    "label": "Reception and transmission of orders"
+   },
+   {
+    "code": "eba_TA:x134",
+    "label": "Execution of orders on behalf of clients"
+   },
+   {
+    "code": "eba_TA:x136",
+    "label": "Portfolio management"
+   },
+   {
+    "code": "eba_TA:x137",
+    "label": "Investment advice"
+   },
+   {
+    "code": "eba_TA:x138",
+    "label": "Underwriting of financial instruments and/or placing of financial instruments on a firm commitment basis"
+   },
+   {
+    "code": "eba_TA:x139",
+    "label": "Placing of financial instruments without a firm commitment basis"
+   },
+   {
+    "code": "eba_TA:x140",
+    "label": "Operation of an MTF"
+   },
+   {
+    "code": "eba_TA:x141",
+    "label": "Operation of an OTF"
+   },
+   {
+    "code": "eba_TA:x143",
+    "label": "Granting credits or loans to investors"
+   },
+   {
+    "code": "eba_TA:x144",
+    "label": "Advice to undertakings on capital structure, industrial strategy and related matters and advice and services relating to mergers and the purchase of undertakings"
+   },
+   {
+    "code": "eba_TA:x146",
+    "label": "Investment research and financial analysis"
+   },
+   {
+    "code": "eba_TA:x147",
+    "label": "Services related to underwriting"
+   },
+   {
+    "code": "eba_TA:x162",
+    "label": "Taking deposits and other repayable funds"
+   }
+  ],
+  "LIST0601050": [
+   {
+    "code": "eba_BT:x28",
+    "label": "Yes"
+   },
+   {
+    "code": "eba_BT:x29",
+    "label": "No"
+   },
+   {
+    "code": "eba_BT:x21",
+    "label": "Assessment not performed"
+   }
+  ],
+  "LIST0601100": [
+   {
+    "code": "eba_ZZ:x791",
+    "label": "Low"
+   },
+   {
+    "code": "eba_ZZ:x792",
+    "label": "Medium"
+   },
+   {
+    "code": "eba_ZZ:x793",
+    "label": "High"
+   },
+   {
+    "code": "eba_ZZ:x799",
+    "label": "Assessment not performed"
+   }
+  ],
+  "LIST0701050": [
+   {
+    "code": "eba_ZZ:x959",
+    "label": "Not substitutable"
+   },
+   {
+    "code": "eba_ZZ:x962",
+    "label": "Easily substitutable"
+   },
+   {
+    "code": "eba_ZZ:x961",
+    "label": "Medium complexity in terms of substitutability"
+   },
+   {
+    "code": "eba_ZZ:x960",
+    "label": "Highly complex substitutability"
+   }
+  ],
+  "LIST0701060": [
+   {
+    "code": "eba_ZZ:x963",
+    "label": "Lack of real alternatives"
+   },
+   {
+    "code": "eba_ZZ:x964",
+    "label": "Difficulties in migrating or reintegrating"
+   },
+   {
+    "code": "eba_ZZ:x965",
+    "label": "Lack of real alternatives and difficulties in migrating or reintegrating"
+   }
+  ],
+  "LIST0701090": [
+   {
+    "code": "eba_ZZ:x798",
+    "label": "Easy"
+   },
+   {
+    "code": "eba_ZZ:x966",
+    "label": "Difficult"
+   },
+   {
+    "code": "eba_ZZ:x967",
+    "label": "Highly complex"
+   }
+  ]
+ }
+}

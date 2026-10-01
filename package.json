@@ -1,0 +1,22 @@
+{
+  "name": "dora-registre-des-tiers",
+  "version": "0.1.0",
+  "description": "Registre d'information DORA (prestataires tiers de services TIC) – interface web multi-profils basée sur le template EBA",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning server/index.js",
+    "demo": "node --disable-warning=ExperimentalWarning server/index.js --demo",
+    "test": "node --disable-warning=ExperimentalWarning --test test/*.test.js",
+    "extract-template": "python3 scripts/extract_template.py template/dora-roi-template.xlsb > server/schema.json"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0"
+  },
+  "overrides": {
+    "uuid": "^11.1.1"
+  }
+}
