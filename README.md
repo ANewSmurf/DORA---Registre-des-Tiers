@@ -16,6 +16,14 @@ valeurs, et propose quatre profils d'utilisateur.
 | **Administrateur de tiers** | Ses prestataires rattachés + référentiel | Données de ses prestataires (accords, signataires, utilisateurs, chaîne d'approvisionnement, évaluations) ; peut déclarer un nouveau prestataire, qui lui est alors rattaché | — |
 | **Lecteur des tiers rattachés** | Ses prestataires rattachés + référentiel | — | — |
 
+Les deux profils **lecteurs** arrivent sur une **vue simplifiée**, sans tableaux ni codes EBA :
+une synthèse (chiffres clés, points d'attention sur les prestataires critiques, prochaines échéances),
+des fiches prestataires en langage clair (contrats, fonctions soutenues, localisation des données,
+remplaçabilité, plan de sortie, dernier audit, sous-traitants), la liste des contrats avec leur statut,
+et l'export Excel. Un lien « Afficher la vue détaillée » donne accès, en lecture, aux tableaux du registre.
+
+![Vue simplifiée d'un lecteur](docs/captures/lecteur-synthese.png)
+
 Le **périmètre d'un tiers** est calculé à partir des codes prestataires (b_05.01.0010) rattachés à
 l'utilisateur : lignes b_05.01 correspondantes, accords où le prestataire apparaît (b_02.02, b_03.02)
 et toutes les lignes portant ces références d'accord (b_02.01, b_02.03, b_03.01, b_03.03, b_04.01,

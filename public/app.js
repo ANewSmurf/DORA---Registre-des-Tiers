@@ -52,7 +52,18 @@ async function api(path, { method = 'GET', body, raw } = {}) {
 const T = (code) => state.schema.tables.find((t) => t.code === code);
 const colOf = (code) => T(code.slice(0, 7)).columns.find((c) => c.code === code);
 
+const regionNames = typeof Intl.DisplayNames === 'function' ? new Intl.DisplayNames(['fr'], { type: 'region' }) : null;
+const currencyNames = typeof Intl.DisplayNames === 'function' ? new Intl.DisplayNames(['fr'], { type: 'currency' }) : null;
+
+/** Libellé d'une valeur de liste EBA : traduction française si disponible, sinon libellé du template. */
 function listLabel(listName, code) {
+  if (!code) return '';
+  try {
+    if (listName === 'LISTCOUNTRY' && regionNames) return regionNames.of(code.replace('eba_GA:', '')) || code;
+    if (listName === 'LISTCURRENCY' && currencyNames) return currencyNames.of(code.replace('eba_CU:', '')) || code;
+  } catch {
+    // code non reconnu par le navigateur : libellé du template
+  }
   return state.lists[listName]?.get(code) ?? code;
 }
 
@@ -60,14 +71,12 @@ function fmt(col, v) {
   if (isEmpty(v)) return '';
   if (col.kind === 'list') {
     const label = listLabel(col.list, v);
-    return col.list === 'LISTCOUNTRY' ? `${v.replace('eba_GA:', '')} – ${titleCase(label)}` : label;
+    return col.list === 'LISTCOUNTRY' ? `${v.replace('eba_GA:', '')} – ${label}` : label;
   }
   if (col.kind === 'money') return Number(v).toLocaleString('fr-FR', { maximumFractionDigits: 2 });
   if (col.kind === 'date') return v === '9999-12-31' ? 'Sans date (9999-12-31)' : new Date(`${v}T00:00:00`).toLocaleDateString('fr-FR');
   return String(v);
 }
-
-const titleCase = (s) => String(s).toLowerCase().replace(/(^|[\s-])\p{L}/gu, (m) => m.toUpperCase());
 
 function providerName(code) {
   const p = (state.tables['b_05.01'] || []).find((r) => r.data['b_05.01.0010'] === code);
@@ -101,7 +110,7 @@ async function loadAll() {
   state.me = me;
   if (!state.schema) {
     state.schema = schema;
-    state.lists = Object.fromEntries(Object.entries(schema.lists).map(([k, items]) => [k, new Map(items.map((i) => [i.code, i.label]))]));
+    state.lists = Object.fromEntries(Object.entries(schema.lists).map(([k, items]) => [k, new Map(items.map((i) => [i.code, i.fr || i.label]))]));
   }
   await refresh();
 }
@@ -163,6 +172,7 @@ function issuesFor(tbl) {
 }
 
 function shell(content) {
+  if (simpleMode()) return readerShell(content);
   const hash = location.hash || '#/';
   const link = (href, label, extra) =>
     h('a', { href, class: hash === href || (href !== '#/' && hash.startsWith(href + '/')) ? 'active' : '' }, h('span', {}, label), extra);
@@ -181,6 +191,7 @@ function shell(content) {
       link('#/controles', 'Contrôles', h('span', { class: `badge ${state.issues.some((i) => i.level === 'erreur') ? 'erreur' : 'ok'}` }, state.issues.length)),
       link('#/echanges', 'Import / export'),
       me.permissions.manageUsers ? [h('div', { class: 'nav-section' }, 'Administration'), link('#/utilisateurs', 'Utilisateurs'), link('#/journal', "Journal d'audit")] : null,
+      isReader() ? h('button', { class: 'btn link small', onclick: () => setDetailView(false) }, '← Revenir à la vue simplifiée') : null,
       Object.entries(groups).map(([g, tables]) => [
         h('div', { class: 'nav-section' }, g),
         tables.map((t) => {
@@ -229,7 +240,14 @@ function route() {
   const parts = (location.hash || '#/').slice(2).split('/');
   const [page, arg] = parts;
   let view;
-  if (!page) view = dashboard();
+  if (simpleMode()) {
+    if (!page) view = readerHome();
+    else if (page === 'tiers' && arg) view = readerProvider(Number(arg));
+    else if (page === 'tiers') view = readerProviders();
+    else if (page === 'contrats') view = readerContracts();
+    else if (page === 'echanges') view = readerExport();
+    else view = h('div', { class: 'empty' }, 'Page introuvable.');
+  } else if (!page) view = dashboard();
   else if (page === 'tiers' && arg) view = providerSheet(Number(arg));
   else if (page === 'tiers') view = providersList();
   else if (page === 'table' && T(arg)) view = tableView(arg);
@@ -619,7 +637,7 @@ function buildFields(table, data, { readOnly = false, skip = [], locked = [] } =
     const disabled = readOnly || locked.includes(col.code);
     let input;
     if (col.kind === 'list') {
-      input = h('select', { id, disabled }, h('option', { value: '' }, '— Non renseigné —'), state.schema.lists[col.list].map((it) => h('option', { value: it.code }, col.list === 'LISTCOUNTRY' ? `${it.code.replace('eba_GA:', '')} – ${titleCase(it.label)}` : it.label)));
+      input = h('select', { id, disabled }, h('option', { value: '' }, '— Non renseigné —'), state.schema.lists[col.list].map((it) => h('option', { value: it.code }, col.list === 'LISTCOUNTRY' ? `${it.code.replace('eba_GA:', '')} – ${listLabel(col.list, it.code)}` : listLabel(col.list, it.code))));
       input.value = v;
     } else if (col.kind === 'date') {
       input = h('input', { id, type: 'date', value: v, disabled, min: '1900-01-01', max: '9999-12-31' });
@@ -1147,6 +1165,428 @@ function auditView() {
     )
     .catch((e) => !e.handled && out.replaceWith(h('div', { class: 'alert error' }, e.message)));
   return h('div', {}, h('div', { class: 'page-head' }, h('div', {}, h('h1', {}, "Journal d'audit"), h('div', { class: 'muted' }, '500 dernières actions (connexions, modifications, imports, exports, gestion des utilisateurs).'))), out);
+}
+
+// ---------------------------------------------------------------------------------------
+// Vue simplifiée des profils lecteurs : prestataires et contrats en langage clair,
+// sans tableaux ni codes du registre EBA.
+// ---------------------------------------------------------------------------------------
+const YES = 'eba_BT:x28';
+const NO = 'eba_BT:x29';
+const HARD_SUBST = ['eba_ZZ:x959', 'eba_ZZ:x960'];
+const DETAIL_KEY = 'dora-vue-detaillee';
+
+const isReader = () => state.me?.role === 'global_reader' || state.me?.role === 'tiers_reader';
+function simpleMode() {
+  if (!isReader()) return false;
+  try {
+    return localStorage.getItem(DETAIL_KEY) !== '1';
+  } catch {
+    return true;
+  }
+}
+function setDetailView(on) {
+  try {
+    if (on) localStorage.setItem(DETAIL_KEY, '1');
+    else localStorage.removeItem(DETAIL_KEY);
+  } catch {
+    // stockage indisponible : la vue simplifiée reste active
+  }
+  location.hash = '#/';
+  route();
+}
+
+const today = () => new Date().toISOString().slice(0, 10);
+const inDays = (n) => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10);
+const frDate = (v) => (!v ? '—' : v === '9999-12-31' ? 'sans échéance' : new Date(`${v}T00:00:00`).toLocaleDateString('fr-FR'));
+const money = (v, cur) => {
+  if (isEmpty(v)) return '—';
+  const c = cur ? cur.replace('eba_CU:', '') : null;
+  try {
+    return Number(v).toLocaleString('fr-FR', c ? { style: 'currency', currency: c, maximumFractionDigits: 0 } : { maximumFractionDigits: 0 });
+  } catch {
+    return Number(v).toLocaleString('fr-FR');
+  }
+};
+const L = (list, v) => (isEmpty(v) ? '—' : listLabel(list, v));
+const plural = (n, one, many) => `${n} ${n > 1 ? many : one}`;
+
+/** Regroupe les lignes b_02.01 / b_02.02 / b_04.01 par contrat. */
+function contractModels() {
+  const t = state.tables;
+  const fns = new Map((t['b_06.01'] || []).map((r) => [r.data['b_06.01.0010'], r.data]));
+  const general = new Map((t['b_02.01'] || []).map((r) => [r.data['b_02.01.0010'], r.data]));
+  const byRef = new Map();
+  for (const r of t['b_02.02'] || []) {
+    const d = r.data;
+    const ref = d['b_02.02.0010'];
+    if (!byRef.has(ref)) {
+      const g = general.get(ref) || {};
+      byRef.set(ref, {
+        ref,
+        providerCode: d['b_02.02.0030'],
+        providerName: providerName(d['b_02.02.0030']) || d['b_02.02.0030'],
+        type: g['b_02.01.0020'],
+        amount: g['b_02.01.0050'],
+        currency: g['b_02.01.0040'],
+        services: new Set(),
+        functions: new Map(),
+        entities: new Set(),
+        start: d['b_02.02.0070'],
+        end: d['b_02.02.0080'],
+        noticeEntity: d['b_02.02.0100'],
+        noticeProvider: d['b_02.02.0110'],
+        law: d['b_02.02.0120'],
+        storage: d['b_02.02.0140'],
+        dataAtRest: new Set(),
+        dataProcessing: new Set(),
+        sensitivity: d['b_02.02.0170'],
+        reliance: d['b_02.02.0180'],
+        rows: [],
+      });
+    }
+    const c = byRef.get(ref);
+    c.rows.push(r);
+    if (d['b_02.02.0060']) c.services.add(d['b_02.02.0060']);
+    if (d['b_02.02.0020']) c.entities.add(entityName(d['b_02.02.0020']) || d['b_02.02.0020']);
+    if (d['b_02.02.0150']) c.dataAtRest.add(d['b_02.02.0150']);
+    if (d['b_02.02.0160']) c.dataProcessing.add(d['b_02.02.0160']);
+    const fid = d['b_02.02.0050'];
+    if (fid) {
+      const f = fns.get(fid) || {};
+      c.functions.set(fid, { id: fid, name: f['b_06.01.0030'] || fid, critical: f['b_06.01.0050'] === YES });
+    }
+    if (d['b_02.02.0070'] && (!c.start || d['b_02.02.0070'] < c.start)) c.start = d['b_02.02.0070'];
+    if (d['b_02.02.0080'] && (!c.end || d['b_02.02.0080'] > c.end)) c.end = d['b_02.02.0080'];
+  }
+  for (const c of byRef.values()) {
+    c.critical = [...c.functions.values()].some((f) => f.critical);
+    if (c.end && c.end < today()) c.status = { key: 'termine', label: 'Terminé', cls: '' };
+    else if (c.end && c.end <= inDays(180)) c.status = { key: 'echeance', label: 'Échéance proche', cls: 'incomplet' };
+    else c.status = { key: 'actif', label: 'En cours', cls: 'ok' };
+  }
+  return [...byRef.values()].sort((a, b) => a.ref.localeCompare(b.ref, 'fr'));
+}
+
+/** Vue synthétique d'un prestataire : identité, contrats, évaluation, sous-traitance. */
+function providerModels() {
+  const contracts = contractModels();
+  const t = state.tables;
+  return (t['b_05.01'] || [])
+    .map((p) => {
+      const d = p.data;
+      const code = d['b_05.01.0010'];
+      const own = contracts.filter((c) => c.providerCode === code);
+      const assess = (t['b_07.01'] || []).filter((r) => r.data['b_07.01.0020'] === code).map((r) => r.data);
+      const audits = assess.map((a) => a['b_07.01.0070']).filter((x) => x && x !== '9999-12-31').sort();
+      const refs = new Set(own.map((c) => c.ref));
+      const subcontractors = (t['b_05.02'] || [])
+        .filter((r) => refs.has(r.data['b_05.02.0010']) && Number(r.data['b_05.02.0050']) > 1)
+        .map((r) => ({ name: providerName(r.data['b_05.02.0030']) || r.data['b_05.02.0030'], rank: r.data['b_05.02.0050'], service: r.data['b_05.02.0020'] }));
+      const hardToReplace = assess.some((a) => HARD_SUBST.includes(a['b_07.01.0050']));
+      const noExitPlan = assess.some((a) => a['b_07.01.0080'] === NO);
+      const critical = own.some((c) => c.critical);
+      return {
+        id: p.id,
+        name: d['b_05.01.0030'] || '(sans nom)',
+        code,
+        codeType: d['b_05.01.0020'],
+        country: d['b_05.01.0050'],
+        spend: d['b_05.01.0070'],
+        currency: d['b_05.01.0060'],
+        parent: d['b_05.01.0080'],
+        personType: d['b_05.01.0040'],
+        contracts: own,
+        assess,
+        lastAudit: audits.at(-1) || null,
+        subcontractors,
+        critical,
+        hardToReplace,
+        noExitPlan,
+        nextEnd: own.map((c) => c.end).filter((e) => e && e >= today()).sort()[0] || null,
+        attention: critical && (hardToReplace || noExitPlan || !audits.length),
+      };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+}
+
+function providerBadges(p) {
+  return [
+    p.critical ? h('span', { class: 'badge erreur' }, 'Fonction critique') : null,
+    p.hardToReplace ? h('span', { class: 'badge incomplet' }, 'Difficile à remplacer') : null,
+    p.noExitPlan ? h('span', { class: 'badge incomplet' }, 'Sans plan de sortie') : null,
+  ];
+}
+
+function readerShell(content) {
+  const hash = location.hash || '#/';
+  const me = state.me;
+  const link = (href, label) => h('a', { href, class: hash === href || (href !== '#/' && hash.startsWith(href)) ? 'active' : '' }, h('span', {}, label));
+  const sidebar = h(
+    'nav',
+    { class: 'sidebar', id: 'sidebar' },
+    h('div', { class: 'brand' }, h('img', { src: '/favicon.svg', alt: '' }), h('div', {}, 'Registre DORA', h('small', {}, 'Prestataires informatiques'))),
+    h('div', { class: 'nav' }, link('#/', 'Synthèse'), link('#/tiers', 'Prestataires'), link('#/contrats', 'Contrats'), link('#/echanges', 'Exporter')),
+    h(
+      'div',
+      { class: 'nav-foot' },
+      h('p', { class: 'muted small' }, 'Besoin du détail au format du registre EBA ?'),
+      h('button', { class: 'btn link small', onclick: () => setDetailView(true) }, 'Afficher la vue détaillée →'),
+    ),
+  );
+  const topbar = h(
+    'header',
+    { class: 'topbar' },
+    h('button', { class: 'btn menu-btn', onclick: () => sidebar.classList.toggle('open') }, '☰'),
+    h('div', { class: 'muted small' }, me.permissions.global ? 'Vous consultez tous les prestataires' : `Vous consultez ${plural(me.providers.length, 'prestataire', 'prestataires')}`),
+    h(
+      'div',
+      { class: 'who' },
+      h('span', {}, me.displayName),
+      h('span', { class: 'badge role' }, me.roleLabel),
+      h('button', { class: 'btn link', onclick: passwordModal }, 'Mot de passe'),
+      h(
+        'button',
+        {
+          class: 'btn',
+          onclick: async () => {
+            await api('/api/logout', { method: 'POST' });
+            state.me = null;
+            location.hash = '#/';
+            renderLogin();
+          },
+        },
+        'Déconnexion',
+      ),
+    ),
+  );
+  sidebar.addEventListener('click', (e) => e.target.closest('a') && sidebar.classList.remove('open'));
+  $app.replaceChildren(h('div', { class: 'layout' }, sidebar, h('div', { class: 'main' }, topbar, h('main', { class: 'content reader' }, content))));
+}
+
+function providerCard(p) {
+  return h(
+    'a',
+    { class: 'pcard', href: `#/tiers/${p.id}` },
+    h('div', { class: 'pcard-head' }, h('b', {}, p.name), h('span', { class: 'muted small' }, L('LISTCOUNTRY', p.country))),
+    h('div', { class: 'pcard-badges' }, providerBadges(p)),
+    h(
+      'div',
+      { class: 'pcard-meta muted small' },
+      h('span', {}, plural(p.contracts.length, 'contrat', 'contrats')),
+      h('span', {}, `Prochaine échéance : ${p.nextEnd ? frDate(p.nextEnd) : '—'}`),
+      h('span', {}, `Dépense annuelle : ${money(p.spend, p.currency)}`),
+    ),
+  );
+}
+
+function readerHome() {
+  const providers = providerModels();
+  const contracts = contractModels();
+  const active = contracts.filter((c) => c.status.key !== 'termine');
+  const expiring = contracts.filter((c) => c.status.key === 'echeance').sort((a, b) => a.end.localeCompare(b.end));
+  const attention = providers.filter((p) => p.attention);
+  const kpi = (v, l, href) => h('a', { class: 'kpi', href }, h('div', { class: 'v' }, v), h('div', { class: 'l' }, l));
+  const why = (p) =>
+    [p.hardToReplace ? 'difficile à remplacer' : null, p.noExitPlan ? 'pas de plan de sortie' : null, !p.lastAudit ? 'jamais audité' : null].filter(Boolean).join(', ');
+  return h(
+    'div',
+    {},
+    h('div', { class: 'page-head' }, h('div', {}, h('h1', {}, `Bonjour ${state.me.displayName}`), h('div', { class: 'muted' }, 'Voici l’essentiel sur les prestataires informatiques que vous suivez.'))),
+    h(
+      'div',
+      { class: 'grid kpis' },
+      kpi(providers.length, 'Prestataires', '#/tiers'),
+      kpi(active.length, 'Contrats en cours', '#/contrats'),
+      kpi(providers.filter((p) => p.critical).length, 'Prestataires soutenant une fonction critique', '#/tiers'),
+      kpi(expiring.length, 'Contrats arrivant à échéance dans les 6 mois', '#/contrats'),
+    ),
+    h(
+      'div',
+      { class: 'grid two', style: 'margin-top:16px' },
+      h(
+        'div',
+        { class: 'card' },
+        h('h2', {}, 'Points d’attention'),
+        attention.length
+          ? h('ul', { class: 'plain' }, attention.map((p) => h('li', {}, h('a', { href: `#/tiers/${p.id}` }, p.name), h('div', { class: 'muted small' }, `Fonction critique : ${why(p)}`))))
+          : h('div', { class: 'empty' }, 'Aucun point d’attention sur les prestataires critiques.'),
+      ),
+      h(
+        'div',
+        { class: 'card' },
+        h('h2', {}, 'Prochaines échéances'),
+        expiring.length
+          ? h('ul', { class: 'plain' }, expiring.map((c) => h('li', {}, h('b', {}, frDate(c.end)), ' · ', c.providerName, h('div', { class: 'muted small' }, `Contrat ${c.ref} · ${[...c.services].map((s) => L('LISTANNEXIII', s)).join(', ')}`))))
+          : h('div', { class: 'empty' }, 'Aucun contrat n’arrive à échéance dans les 6 prochains mois.'),
+      ),
+    ),
+    h('h2', { style: 'margin-top:8px' }, 'Vos prestataires'),
+    providers.length ? h('div', { class: 'pcards' }, providers.map(providerCard)) : h('div', { class: 'card empty' }, 'Aucun prestataire ne vous est rattaché. Contactez l’administrateur de la plateforme.'),
+  );
+}
+
+function readerProviders() {
+  const providers = providerModels();
+  const search = h('input', { class: 'search', type: 'search', placeholder: 'Rechercher un prestataire…' });
+  const onlyCritical = h('input', { type: 'checkbox' });
+  const grid = h('div', { class: 'pcards' });
+  const draw = () => {
+    const q = search.value.toLowerCase();
+    const list = providers.filter((p) => (!q || `${p.name} ${p.code}`.toLowerCase().includes(q)) && (!onlyCritical.checked || p.critical));
+    grid.replaceChildren(...(list.length ? list.map(providerCard) : [h('div', { class: 'empty' }, 'Aucun prestataire.')]));
+  };
+  search.addEventListener('input', draw);
+  onlyCritical.addEventListener('change', draw);
+  draw();
+  return h(
+    'div',
+    {},
+    h('div', { class: 'page-head' }, h('h1', {}, 'Prestataires'), h('div', { class: 'toolbar' }, search, h('label', { class: 'small' }, onlyCritical, ' Fonction critique uniquement'))),
+    grid,
+  );
+}
+
+function readerProvider(id) {
+  const p = providerModels().find((x) => x.id === id);
+  if (!p) return h('div', { class: 'empty' }, 'Prestataire introuvable ou hors de votre périmètre.');
+  const item = (label, value) => [h('dt', {}, label), h('dd', {}, value ?? '—')];
+  const a = p.assess;
+  const pick = (col, list) => [...new Set(a.map((x) => x[col]).filter(Boolean))].map((v) => (list ? L(list, v) : v)).join(', ') || '—';
+  return h(
+    'div',
+    {},
+    h(
+      'div',
+      { class: 'page-head' },
+      h('div', {}, h('a', { href: '#/tiers', class: 'small' }, '← Prestataires'), h('h1', {}, p.name), h('div', { class: 'pcard-badges' }, providerBadges(p))),
+    ),
+    h(
+      'div',
+      { class: 'grid two' },
+      h(
+        'div',
+        { class: 'card' },
+        h('h2', {}, 'En bref'),
+        h(
+          'dl',
+          { class: 'dl' },
+          item('Pays du siège', L('LISTCOUNTRY', p.country)),
+          item('Identifiant', `${p.code} (${p.codeType === 'LEI' ? 'LEI' : p.codeType || '—'})`),
+          item('Dépense annuelle', money(p.spend, p.currency)),
+          item('Contrats', plural(p.contracts.length, 'contrat', 'contrats')),
+          item('Société mère', p.parent || '—'),
+        ),
+      ),
+      h(
+        'div',
+        { class: 'card' },
+        h('h2', {}, 'Évaluation du risque'),
+        a.length
+          ? h(
+              'dl',
+              { class: 'dl' },
+              item('Remplaçabilité', pick('b_07.01.0050', 'LIST0701050')),
+              item('Pourquoi', pick('b_07.01.0060', 'LIST0701060')),
+              item('Plan de sortie', pick('b_07.01.0080', 'LISTBINARY')),
+              item('Reprise en interne', pick('b_07.01.0090', 'LIST0701090')),
+              item('Impact d’un arrêt', pick('b_07.01.0100', 'LIST0601100')),
+              item('Dernier audit', p.lastAudit ? frDate(p.lastAudit) : 'Aucun audit'),
+              item('Alternatives identifiées', pick('b_07.01.0110', 'LIST0601050')),
+            )
+          : h('div', { class: 'empty' }, 'Pas encore d’évaluation pour ce prestataire.'),
+      ),
+    ),
+    h('h2', { style: 'margin-top:8px' }, 'Contrats'),
+    p.contracts.length ? p.contracts.map(contractCard) : h('div', { class: 'card empty' }, 'Aucun contrat.'),
+    p.subcontractors.length
+      ? h(
+          'div',
+          { class: 'card' },
+          h('h2', {}, 'Sous-traitants'),
+          h('ul', { class: 'plain' }, p.subcontractors.map((s) => h('li', {}, h('b', {}, s.name), h('div', { class: 'muted small' }, `Rang ${s.rank} · ${L('LISTANNEXIII', s.service)}`)))),
+        )
+      : null,
+  );
+}
+
+function contractCard(c) {
+  const item = (label, value) => [h('dt', {}, label), h('dd', {}, value || '—')];
+  const countries = (set) => [...set].map((v) => L('LISTCOUNTRY', v)).join(', ');
+  return h(
+    'div',
+    { class: 'card' },
+    h(
+      'div',
+      { class: 'page-head', style: 'margin-bottom:8px' },
+      h('div', {}, h('h3', { style: 'margin:0' }, [...c.services].map((s) => L('LISTANNEXIII', s)).join(', ') || 'Service non précisé'), h('div', { class: 'muted small' }, `Contrat ${c.ref}`)),
+      h('div', { class: 'toolbar' }, c.critical ? h('span', { class: 'badge erreur' }, 'Fonction critique') : null, h('span', { class: `badge ${c.status.cls}` }, c.status.label)),
+    ),
+    h(
+      'dl',
+      { class: 'dl' },
+      item('Fonctions soutenues', [...c.functions.values()].map((f) => f.name + (f.critical ? ' (critique)' : '')).join(', ')),
+      item('Utilisé par', [...c.entities].join(', ')),
+      item('Période', `du ${frDate(c.start)} au ${frDate(c.end)}`),
+      item('Préavis', c.noticeEntity || c.noticeProvider ? `${c.noticeEntity || '—'} j pour nous, ${c.noticeProvider || '—'} j pour le prestataire` : '—'),
+      item('Montant annuel', money(c.amount, c.currency)),
+      item('Données stockées', c.storage === YES ? `Oui${c.dataAtRest.size ? ` (${countries(c.dataAtRest)})` : ''}` : c.storage === NO ? 'Non' : '—'),
+      item('Données traitées en', countries(c.dataProcessing)),
+      item('Sensibilité des données', L('LIST0202170', c.sensitivity)),
+      item('Niveau de dépendance', L('LIST0202180', c.reliance)),
+    ),
+  );
+}
+
+function readerContracts() {
+  const contracts = contractModels();
+  const providersById = new Map((state.tables['b_05.01'] || []).map((p) => [p.data['b_05.01.0010'], p.id]));
+  const search = h('input', { class: 'search', type: 'search', placeholder: 'Rechercher…' });
+  const status = h('select', { style: 'max-width:200px' }, h('option', { value: '' }, 'Tous les statuts'), h('option', { value: 'actif' }, 'En cours'), h('option', { value: 'echeance' }, 'Échéance proche'), h('option', { value: 'termine' }, 'Terminés'));
+  const tbody = h('tbody');
+  const draw = () => {
+    const q = search.value.toLowerCase();
+    const list = contracts.filter((c) => (!status.value || c.status.key === status.value) && (!q || `${c.ref} ${c.providerName} ${[...c.services].map((s) => L('LISTANNEXIII', s)).join(' ')}`.toLowerCase().includes(q)));
+    tbody.replaceChildren(
+      ...list.map((c) => {
+        const pid = providersById.get(c.providerCode);
+        return h(
+          'tr',
+          { onclick: () => pid && (location.hash = `#/tiers/${pid}`) },
+          h('td', {}, h('b', {}, c.providerName), h('div', { class: 'muted small' }, c.ref)),
+          h('td', {}, [...c.services].map((s) => L('LISTANNEXIII', s)).join(', ')),
+          h('td', {}, [...c.functions.values()].map((f) => f.name).join(', '), c.critical ? [' ', h('span', { class: 'badge erreur' }, 'critique')] : null),
+          h('td', {}, frDate(c.end)),
+          h('td', {}, h('span', { class: `badge ${c.status.cls}` }, c.status.label)),
+        );
+      }),
+    );
+    if (!list.length) tbody.append(h('tr', {}, h('td', { colspan: 5, class: 'empty' }, 'Aucun contrat.')));
+  };
+  search.addEventListener('input', draw);
+  status.addEventListener('change', draw);
+  draw();
+  return h(
+    'div',
+    {},
+    h('div', { class: 'page-head' }, h('h1', {}, 'Contrats'), h('div', { class: 'toolbar' }, search, status)),
+    h('div', { class: 'table-wrap' }, h('table', { class: 'data' }, h('thead', {}, h('tr', {}, ['Prestataire', 'Service', 'Fonction soutenue', 'Fin', 'Statut'].map((x) => h('th', {}, x)))), tbody)),
+  );
+}
+
+function readerExport() {
+  return h(
+    'div',
+    {},
+    h('div', { class: 'page-head' }, h('h1', {}, 'Exporter')),
+    h(
+      'div',
+      { class: 'card' },
+      h('p', {}, 'Téléchargez les informations que vous consultez dans un fichier Excel au format officiel du registre d’information DORA.'),
+      h('p', { class: 'muted small' }, state.me.permissions.global ? 'Le fichier contient l’ensemble du registre.' : 'Le fichier est limité à vos prestataires.'),
+      h('a', { class: 'btn primary', href: '/api/export.xlsx' }, 'Télécharger le fichier Excel'),
+    ),
+  );
 }
 
 // ---------------------------------------------------------------------------------------

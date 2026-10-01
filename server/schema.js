@@ -1,7 +1,7 @@
 // Schéma enrichi du registre : structure extraite du template EBA (schema.json)
 // + libellés français, nature de chaque champ, caractère obligatoire et références croisées.
 import { readFileSync } from 'node:fs';
-import { TABLES_FR, COLUMNS_FR, TYPES_FR, CONDITIONS_FR } from './labels-fr.js';
+import { TABLES_FR, COLUMNS_FR, TYPES_FR, CONDITIONS_FR, VALUES_FR } from './labels-fr.js';
 
 const raw = JSON.parse(readFileSync(new URL('./schema.json', import.meta.url), 'utf8'));
 
@@ -120,7 +120,13 @@ function buildSchema() {
       }),
     };
   });
-  return { source: raw.source, tables, lists: raw.lists };
+  const lists = Object.fromEntries(
+    Object.entries(raw.lists).map(([name, items]) => [
+      name,
+      items.map((it) => (VALUES_FR[it.code] ? { ...it, fr: VALUES_FR[it.code] } : it)),
+    ]),
+  );
+  return { source: raw.source, tables, lists };
 }
 
 export const schema = buildSchema();

@@ -172,3 +172,85 @@ export const CONDITIONS_FR = {
   'Mandatory in case “not substitutable” or “highly complex substitutability” is selected in RT.07.01.0050':
     'Obligatoire si « non substituable » ou « substituabilité très complexe » en b_07.01.0050',
 };
+
+// Traduction des valeurs des listes EBA les plus utilisées (clé = code EBA).
+// Les pays et devises sont traduits côté navigateur (Intl.DisplayNames).
+export const VALUES_FR = {
+  // Types de services TIC (annexe III)
+  'eba_TA:S01': 'Gestion de projets TIC',
+  'eba_TA:S02': 'Développement TIC',
+  'eba_TA:S03': 'Centre de services et support de premier niveau',
+  'eba_TA:S04': 'Services de gestion de la sécurité TIC',
+  'eba_TA:S05': 'Fourniture de données',
+  'eba_TA:S06': 'Analyse de données',
+  'eba_TA:S07': 'Hébergement et infrastructures TIC (hors cloud)',
+  'eba_TA:S08': 'Puissance de calcul',
+  'eba_TA:S09': 'Stockage de données (hors cloud)',
+  'eba_TA:S10': 'Opérateur de télécommunications',
+  'eba_TA:S11': 'Infrastructure réseau',
+  'eba_TA:S12': 'Matériel et équipements physiques',
+  'eba_TA:S13': 'Licences logicielles (hors SaaS)',
+  'eba_TA:S14': 'Exploitation TIC (y compris maintenance)',
+  'eba_TA:S15': 'Conseil TIC',
+  'eba_TA:S16': 'Gestion des risques TIC',
+  'eba_TA:S17': 'Cloud : IaaS',
+  'eba_TA:S18': 'Cloud : PaaS',
+  'eba_TA:S19': 'Cloud : SaaS',
+  // Oui / non
+  'eba_BT:x28': 'Oui',
+  'eba_BT:x29': 'Non',
+  'eba_BT:x21': 'Évaluation non réalisée',
+  // Niveaux
+  'eba_ZZ:x791': 'Faible',
+  'eba_ZZ:x792': 'Moyen',
+  'eba_ZZ:x793': 'Élevé',
+  'eba_ZZ:x799': 'Évaluation non réalisée',
+  // Dépendance au service
+  'eba_ZZ:x794': 'Non significative',
+  'eba_ZZ:x795': 'Faible',
+  'eba_ZZ:x796': 'Importante',
+  'eba_ZZ:x797': 'Totale',
+  // Substituabilité
+  'eba_ZZ:x959': 'Non substituable',
+  'eba_ZZ:x960': 'Substitution très complexe',
+  'eba_ZZ:x961': 'Substitution moyennement complexe',
+  'eba_ZZ:x962': 'Facilement substituable',
+  'eba_ZZ:x963': "Absence d'alternative réelle",
+  'eba_ZZ:x964': 'Difficultés de migration ou de réinternalisation',
+  'eba_ZZ:x965': "Absence d'alternative et difficultés de migration",
+  // Réinternalisation
+  'eba_ZZ:x798': 'Facile',
+  'eba_ZZ:x966': 'Difficile',
+  'eba_ZZ:x967': 'Très complexe',
+  // Nature de l'entité utilisatrice
+  'eba_ZZ:x838': "Succursale d'une entité financière",
+  'eba_ZZ:x839': 'Hors succursale',
+  // Types d'accord
+  'eba_CO:x1': 'Accord autonome',
+  'eba_CO:x2': 'Accord-cadre',
+  'eba_CO:x3': 'Accord subséquent ou associé',
+  // Motifs de fin
+  'eba_CO:x4': 'Fin sans faute : arrivé à échéance, non renouvelé',
+  'eba_CO:x5': 'Résiliation pour faute : manquement du prestataire',
+  'eba_CO:x6': 'Résiliation pour faute : obstacle affectant la fonction soutenue',
+  'eba_CO:x7': 'Résiliation pour faute : faiblesses sur la sécurité des données',
+  'eba_CO:x8': "Résiliation à la demande de l'autorité compétente",
+  'eba_CO:x9': 'Autre motif de résiliation',
+  // Type de personne
+  'eba_CT:x212': 'Personne morale',
+  'eba_CT:x213': 'Personne physique agissant à titre professionnel',
+  // Position dans le groupe
+  'eba_RP:x53': 'Société mère ultime',
+  'eba_RP:x551': 'Société mère (non ultime)',
+  'eba_RP:x56': 'Filiale',
+  'eba_RP:x21': 'Entité hors groupe',
+  'eba_RP:x210': 'Externalisation',
+  // Types d'entité (principaux)
+  'eba_CT:x12': 'Établissement de crédit',
+  'eba_CT:x599': "Entreprise d'investissement",
+  'eba_CT:x300': 'Établissement de paiement',
+  'eba_CT:x302': 'Établissement de monnaie électronique',
+  'eba_CT:x309': "Entreprise d'assurance ou de réassurance",
+  'eba_CT:x639': 'Société de gestion',
+  'eba_CT:x316': 'Autre entité financière',
+};
