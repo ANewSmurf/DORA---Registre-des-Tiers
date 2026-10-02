@@ -65,6 +65,15 @@ code, .code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monosp
 .nav a:hover { background: var(--surface-2); text-decoration: none; }
 .nav a.active { background: var(--primary-soft); color: var(--primary); font-weight: 600; }
 .nav a .code { color: var(--muted); }
+.nav-group { margin-top: 4px; }
+.nav-group summary { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px; border-radius: 6px; cursor: pointer; list-style: none; font-weight: 600; user-select: none; }
+.nav-group summary::-webkit-details-marker { display: none; }
+.nav-group summary::before { content: '▸'; color: var(--muted); margin-right: 6px; transition: transform 0.15s; display: inline-block; }
+.nav-group[open] summary::before { transform: rotate(90deg); }
+.nav-group summary > span:first-child { flex: 1; }
+.nav-group summary:hover { background: var(--surface-2); }
+.nav-group summary .code { color: var(--muted); font-weight: 400; }
+.nav-group > a { padding-left: 26px; }
 .main { min-width: 0; display: flex; flex-direction: column; }
 .topbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 24px; background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 5; }
 .topbar .who { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
