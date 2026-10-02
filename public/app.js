@@ -193,6 +193,29 @@ function toggleMenu() {
   }
 }
 
+// Sections du menu latéral, repliées par défaut ; l'état ouvert/fermé est conservé pendant la session.
+const NAV_SECTIONS = [
+  { key: 'Tiers', label: 'Tiers' },
+  { key: 'Contrats', label: 'Contrats' },
+  { key: 'Signataire', label: 'Signataire' },
+  { key: 'Entités', label: 'Entités' },
+  { key: 'Fonctions', label: 'Fonctions' },
+  { key: 'Administration', label: 'Administration' },
+];
+const openSections = new Set();
+
+function navSection(sec, items) {
+  const hasActive = items.some((a) => a.classList.contains('active'));
+  const details = h(
+    'details',
+    { class: 'nav-group', open: openSections.has(sec.key) || hasActive },
+    h('summary', {}, h('span', {}, sec.label), hasActive ? null : h('span', { class: 'code' }, items.length)),
+    items,
+  );
+  details.addEventListener('toggle', () => (details.open ? openSections.add(sec.key) : openSections.delete(sec.key)));
+  return details;
+}
+
 function issuesFor(tbl) {
   return state.issues.filter((i) => i.table === tbl && i.level === 'erreur').length;
 }
@@ -202,8 +225,6 @@ function shell(content) {
   const hash = location.hash || '#/';
   const link = (href, label, extra) =>
     h('a', { href, class: hash === href || (href !== '#/' && hash.startsWith(href + '/')) ? 'active' : '' }, h('span', {}, label), extra);
-  const groups = {};
-  for (const t of state.schema.tables) (groups[t.group] ||= []).push(t);
   const me = state.me;
   const sidebar = h(
     'nav',
@@ -213,18 +234,22 @@ function shell(content) {
       'div',
       { class: 'nav' },
       link('#/', 'Tableau de bord'),
-      link('#/tiers', 'Prestataires TIC', h('span', { class: 'badge' }, (state.tables['b_05.01'] || []).length)),
-      link('#/controles', 'Contrôles', h('span', { class: `badge ${state.issues.some((i) => i.level === 'erreur') ? 'erreur' : 'ok'}` }, state.issues.length)),
-      link('#/echanges', 'Import / export'),
-      me.permissions.manageUsers ? [h('div', { class: 'nav-section' }, 'Administration'), link('#/utilisateurs', 'Utilisateurs'), link('#/journal', "Journal d'audit")] : null,
       isReader() ? h('button', { class: 'btn link small', onclick: () => setDetailView(false) }, '← Revenir à la vue simplifiée') : null,
-      Object.entries(groups).map(([g, tables]) => [
-        h('div', { class: 'nav-section' }, g),
-        tables.map((t) => {
+      NAV_SECTIONS.map((sec) => {
+        const items = [];
+        if (sec.key === 'Tiers') items.push(link('#/tiers', 'Fiches prestataires', h('span', { class: 'badge' }, (state.tables['b_05.01'] || []).length)));
+        for (const t of state.schema.tables.filter((x) => x.group === sec.key)) {
           const n = issuesFor(t.code);
-          return link(`#/table/${t.code}`, t.title, h('span', { class: n ? 'badge erreur' : 'code' }, n ? `${n} ⚠` : t.code.replace('b_', '')));
-        }),
-      ]),
+          items.push(link(`#/table/${t.code}`, t.title, h('span', { class: n ? 'badge erreur' : 'code' }, n ? `${n} ⚠` : t.code.replace('b_', ''))));
+        }
+        if (sec.key === 'Administration') {
+          const errs = state.issues.some((i) => i.level === 'erreur');
+          items.push(link('#/controles', 'Contrôles', h('span', { class: `badge ${errs ? 'erreur' : 'ok'}` }, state.issues.length)));
+          items.push(link('#/echanges', 'Import / export'));
+          if (me.permissions.manageUsers) items.push(link('#/utilisateurs', 'Utilisateurs'), link('#/journal', "Journal d'audit"));
+        }
+        return navSection(sec, items);
+      }),
     ),
   );
   const topbar = h(
