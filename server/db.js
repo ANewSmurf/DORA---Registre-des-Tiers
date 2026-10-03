@@ -2,7 +2,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import { existsSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { DEFAULT_REGULATIONS } from '../public/shared/tiers-model.js';
+import { DEFAULT_REGULATIONS, legacyContact } from '../public/shared/tiers-model.js';
 
 const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS users (
@@ -90,6 +90,30 @@ CREATE TABLE IF NOT EXISTS audit (
 export const MIGRATIONS = [
   // Structure initiale (idempotente : les bases créées avant le suivi des versions la possèdent déjà).
   { version: 1, name: 'structure initiale', up: (db) => db.exec(SCHEMA_SQL) },
+  {
+    version: 2,
+    name: 'organisation de la structure et contacts des tiers',
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE directions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          data TEXT NOT NULL,
+          position INTEGER NOT NULL DEFAULT 0
+        );
+        CREATE TABLE tiers_managers (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          data TEXT NOT NULL
+        );
+      `);
+      // Le contact unique (nom, e-mail) des fiches tiers devient la première ligne du tableau des contacts.
+      for (const r of db.prepare('SELECT id, data FROM tiers').all()) {
+        const { contactName, contactEmail, ...data } = JSON.parse(r.data);
+        const legacy = legacyContact(contactName, contactEmail);
+        data.contacts = data.contacts || (legacy ? [legacy] : []);
+        db.prepare('UPDATE tiers SET data = ? WHERE id = ?').run(JSON.stringify(data), r.id);
+      }
+    },
+  },
 ];
 export const SCHEMA_VERSION = MIGRATIONS.at(-1).version;
 

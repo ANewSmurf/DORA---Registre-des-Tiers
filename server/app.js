@@ -36,7 +36,8 @@ import {
   syncFromDora,
   exportTiersWorkbook,
 } from './tiers.js';
-import { cleanTiers, cleanPrestation, cleanRegulation, DORA_CODE } from '../public/shared/tiers-model.js';
+import { cleanTiers, cleanPrestation, cleanRegulation, cleanDirection, cleanManager, DORA_CODE } from '../public/shared/tiers-model.js';
+import { getOrganisation, getDirection, getManager, listDirections, organisationLabels } from './organisation.js';
 import { listRegulations, getRegulation, regulationUsage, getSettings, saveSettings } from './regulations.js';
 import { ebaFunctionIds, listFunctionIds } from './function-ids.js';
 
@@ -380,6 +381,10 @@ export function createApp(db, { secureCookies = false } = {}) {
     });
   });
 
+  const checkOrgRefs = (data, errors) => {
+    if (data.directionId && !getDirection(db, data.directionId)) errors.directionId = 'Direction inconnue';
+    if (data.managerId && !getManager(db, data.managerId)) errors.managerId = 'Responsable inconnu';
+  };
   const invalid = (errors) => Object.keys(errors).length && fail(422, 'Certaines valeurs sont invalides', { errors });
 
   route('POST', '/api/tiers', async (req, res, { user }) => {
@@ -421,6 +426,7 @@ export function createApp(db, { secureCookies = false } = {}) {
     const tiers = getTiers(db, Number(body.tiersId)) || fail(400, 'Tiers inconnu');
     if (!canEditTiers(user, tiersScope(db, user), tiers.id)) fail(403, 'Ce tiers ne vous est pas rattaché');
     const { data, errors } = cleanPrestation(body.data, listRegulations(db, { activeOnly: true }));
+    checkOrgRefs(data, errors);
     invalid(errors);
     const id = insertPrestation(db, tiers.id, data, user.id);
     audit(db, user, 'création', { tbl: 'prestations', recordId: id, detail: data });
@@ -436,6 +442,7 @@ export function createApp(db, { secureCookies = false } = {}) {
     if (!canEditTiers(user, scope, existing.tiers_id) || !canEditTiers(user, scope, tiersId)) fail(403, 'Ce tiers ne vous est pas rattaché');
     const active = listRegulations(db, { activeOnly: true });
     const { data, errors } = cleanPrestation(body.data, active);
+    checkOrgRefs(data, errors);
     invalid(errors);
     // Les qualifications d'une régulation désactivée ne sont pas éditables : elles sont conservées.
     for (const [code, v] of Object.entries(existing.data.qualifications || {})) {
@@ -464,7 +471,12 @@ export function createApp(db, { secureCookies = false } = {}) {
     const tiers = allTiers(db).filter((t) => !scope || scope.has(t.id));
     const ids = new Set(tiers.map((t) => t.id));
     const buf = Buffer.from(
-      await exportTiersWorkbook(tiers, allPrestations(db).filter((p) => ids.has(p.tiers_id)), listRegulations(db, { activeOnly: true })),
+      await exportTiersWorkbook(
+        tiers,
+        allPrestations(db).filter((p) => ids.has(p.tiers_id)),
+        listRegulations(db, { activeOnly: true }),
+        organisationLabels(db),
+      ),
     );
     audit(db, user, 'export Excel des tiers', { detail: `${tiers.length} tiers` });
     send(res, 200, buf, {
@@ -543,6 +555,86 @@ export function createApp(db, { secureCookies = false } = {}) {
     const settings = saveSettings(db, (await readJson(req)).data || {});
     audit(db, user, 'modification des paramètres', { detail: settings });
     send(res, 200, settings);
+  });
+
+  // ---- Organisation de la structure (directions COMEX, responsables de tiers) ----------
+  route('GET', '/api/organisation', async (req, res) => send(res, 200, getOrganisation(db)));
+
+  route('POST', '/api/organisation/directions', async (req, res, { user }) => {
+    requireAdmin(user);
+    const { data, errors } = cleanDirection((await readJson(req)).data);
+    invalid(errors);
+    const pos = db.prepare('SELECT COALESCE(MAX(position), -1) + 1 AS p FROM directions').get().p;
+    const id = Number(db.prepare('INSERT INTO directions (data, position) VALUES (?, ?)').run(JSON.stringify(data), pos).lastInsertRowid);
+    audit(db, user, 'création direction', { detail: data });
+    send(res, 201, getDirection(db, id));
+  });
+
+  route('PUT', '/api/organisation/directions/:id', async (req, res, { user, params }) => {
+    requireAdmin(user);
+    const existing = getDirection(db, Number(params.id)) || fail(404, 'Direction introuvable');
+    const { data, errors } = cleanDirection((await readJson(req)).data);
+    invalid(errors);
+    db.prepare('UPDATE directions SET data = ? WHERE id = ?').run(JSON.stringify(data), existing.id);
+    audit(db, user, 'modification direction', { detail: { avant: existing, après: data } });
+    send(res, 200, getDirection(db, existing.id));
+  });
+
+  route('POST', '/api/organisation/directions/:id/move', async (req, res, { user, params }) => {
+    requireAdmin(user);
+    const dir = Number((await readJson(req)).dir) < 0 ? -1 : 1;
+    const list = listDirections(db);
+    const i = list.findIndex((d) => d.id === Number(params.id));
+    if (i < 0) fail(404, 'Direction introuvable');
+    const j = i + dir;
+    if (j >= 0 && j < list.length) {
+      [list[i], list[j]] = [list[j], list[i]];
+      tx(db, () => list.forEach((d, k) => db.prepare('UPDATE directions SET position = ? WHERE id = ?').run(k, d.id)));
+    }
+    send(res, 200, { ok: true });
+  });
+
+  route('DELETE', '/api/organisation/directions/:id', async (req, res, { user, params }) => {
+    requireAdmin(user);
+    const existing = getOrganisation(db).directions.find((d) => d.id === Number(params.id)) || fail(404, 'Direction introuvable');
+    if (existing.usage) fail(409, `${existing.usage} prestation(s) sont rattachées à cette direction : changez-les d’abord`);
+    if (existing.managers) fail(409, `${existing.managers} responsable(s) de tiers appartiennent à cette direction : changez-les d’abord`);
+    db.prepare('DELETE FROM directions WHERE id = ?').run(existing.id);
+    audit(db, user, 'suppression direction', { detail: existing });
+    send(res, 200, { ok: true });
+  });
+
+  const cleanManagerChecked = (input) => {
+    const { data, errors } = cleanManager(input);
+    if (data.directionId && !getDirection(db, data.directionId)) errors.directionId = 'Direction inconnue';
+    invalid(errors);
+    return data;
+  };
+
+  route('POST', '/api/organisation/managers', async (req, res, { user }) => {
+    requireAdmin(user);
+    const data = cleanManagerChecked((await readJson(req)).data);
+    const id = Number(db.prepare('INSERT INTO tiers_managers (data) VALUES (?)').run(JSON.stringify(data)).lastInsertRowid);
+    audit(db, user, 'création responsable de tiers', { detail: data });
+    send(res, 201, getManager(db, id));
+  });
+
+  route('PUT', '/api/organisation/managers/:id', async (req, res, { user, params }) => {
+    requireAdmin(user);
+    const existing = getManager(db, Number(params.id)) || fail(404, 'Responsable introuvable');
+    const data = cleanManagerChecked((await readJson(req)).data);
+    db.prepare('UPDATE tiers_managers SET data = ? WHERE id = ?').run(JSON.stringify(data), existing.id);
+    audit(db, user, 'modification responsable de tiers', { detail: { avant: existing, après: data } });
+    send(res, 200, getManager(db, existing.id));
+  });
+
+  route('DELETE', '/api/organisation/managers/:id', async (req, res, { user, params }) => {
+    requireAdmin(user);
+    const existing = getOrganisation(db).managers.find((m) => m.id === Number(params.id)) || fail(404, 'Responsable introuvable');
+    if (existing.usage) fail(409, `${existing.usage} prestation(s) ont ce responsable : changez-les d’abord`);
+    db.prepare('DELETE FROM tiers_managers WHERE id = ?').run(existing.id);
+    audit(db, user, 'suppression responsable de tiers', { detail: existing });
+    send(res, 200, { ok: true });
   });
 
   // ---- Utilisateurs (administrateur global) --------------------------------------------

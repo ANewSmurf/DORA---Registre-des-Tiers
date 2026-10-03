@@ -59,33 +59,57 @@ const DATA = [
 // Tiers hors registre DORA et leurs prestations (fictifs).
 const OTHER_TIERS = [
   [
-    { name: 'Transval Sécurité', category: 'Logistique et sûreté', idType: 'SIREN', identifier: '412345678', country: 'FR', contactName: 'Claire Martin', contactEmail: 'claire.martin@transval.example' },
+    { name: 'Transval Sécurité', category: 'Logistique et sûreté', idType: 'SIREN', identifier: '412345678', country: 'FR', contacts: [
+      { role: 'Directeur général (DG)', firstName: 'Bertrand', lastName: 'Caron', email: 'b.caron@transval.example', phone: '01 40 00 00 01' },
+      { role: 'Responsable commercial', firstName: 'Claire', lastName: 'Martin', email: 'claire.martin@transval.example', phone: '06 12 34 56 78' },
+      { role: 'Délégué à la protection des données (DPO)', firstName: 'Hugo', lastName: 'Perrin', email: 'dpo@transval.example', phone: '' },
+    ] },
     [
-      { title: 'Transport de fonds et approvisionnement des automates', domain: 'Logistique et sûreté', owner: 'Direction des opérations', start: '2023-01-01', end: '2026-12-31', annualCost: '410000', nextReview: '2026-06-30', qualifications: { PECI: { note: 'Indispensable à la disponibilité des espèces' }, PBE: {} } },
+      { title: 'Transport de fonds et approvisionnement des automates', domain: 'Logistique et sûreté', org: 'OPS', start: '2023-01-01', end: '2026-12-31', annualCost: '410000', nextReview: '2026-06-30', qualifications: { PECI: { note: 'Indispensable à la disponibilité des espèces' }, PBE: {} } },
     ],
   ],
   [
-    { name: 'Éditique Nord', category: 'Prestataire de services', idType: 'SIREN', identifier: '523456789', country: 'FR', contactName: 'Paul Lefèvre' },
+    { name: 'Éditique Nord', category: 'Prestataire de services', idType: 'SIREN', identifier: '523456789', country: 'FR', contacts: [{ role: 'Interlocuteur opérationnel', firstName: 'Paul', lastName: 'Lefèvre', email: 'p.lefevre@editique-nord.example', phone: '03 20 00 00 10' }] },
     [
-      { title: 'Impression et envoi des relevés de compte', domain: 'Relation client', owner: 'Direction de la relation client', start: '2022-04-01', end: '2027-03-31', annualCost: '180000', nextReview: '2025-12-31', qualifications: { PECI: {}, ABE: { critical: true, note: 'Information réglementaire des clients' } } },
+      { title: 'Impression et envoi des relevés de compte', domain: 'Relation client', org: 'OPS', start: '2022-04-01', end: '2027-03-31', annualCost: '180000', nextReview: '2025-12-31', qualifications: { PECI: {}, ABE: { critical: true, note: 'Information réglementaire des clients' } } },
     ],
   ],
   [
     { name: 'Banque Partenaire Europe', category: 'Établissement financier', idType: 'LEI', identifier: makeLei('969500PARTENAIRE01'), country: 'BE' },
     [
-      { title: 'Compensation et règlement des virements SEPA', domain: 'Paiements', owner: 'Direction des flux', start: '2020-01-01', annualCost: '950000', nextReview: '2026-03-31', qualifications: { PBE: {}, PECI: {}, RES: { critical: true, note: 'Accès aux systèmes de paiement' }, ABE: { critical: true } } },
-      { title: 'Tenue de compte nostro en devises', domain: 'Paiements', owner: 'Trésorerie', start: '2021-06-01', qualifications: { PBE: {}, RES: {} } },
+      { title: 'Compensation et règlement des virements SEPA', domain: 'Paiements', org: 'FIN', start: '2020-01-01', annualCost: '950000', nextReview: '2026-03-31', qualifications: { PBE: {}, PECI: {}, RES: { critical: true, note: 'Accès aux systèmes de paiement' }, ABE: { critical: true } } },
+      { title: 'Tenue de compte nostro en devises', domain: 'Paiements', org: 'FIN', start: '2021-06-01', qualifications: { PBE: {}, RES: {} } },
     ],
   ],
   [
     { name: 'Archives & Co', category: 'Services généraux', idType: 'SIREN', identifier: '634567890', country: 'FR' },
-    [{ title: 'Archivage physique des dossiers de crédit', domain: 'Back-office', owner: 'Direction des crédits', start: '2019-09-01', end: '2025-08-31', status: 'terminee', annualCost: '35000', qualifications: { ABE: {} } }],
+    [{ title: 'Archivage physique des dossiers de crédit', domain: 'Back-office', org: 'OPS', start: '2019-09-01', end: '2025-08-31', status: 'terminee', annualCost: '35000', qualifications: { ABE: {} } }],
   ],
   [
     { name: 'Cabinet Delorme Conseil', category: 'Conseil et audit', idType: 'SIREN', identifier: '745678901', country: 'FR' },
-    [{ title: 'Accompagnement à la mise en conformité DORA', domain: 'Conformité et risques', owner: 'Direction des risques', start: '2025-02-01', end: '2026-01-31', annualCost: '60000', qualifications: {} }],
+    [{ title: 'Accompagnement à la mise en conformité DORA', domain: 'Conformité et risques', org: 'RISK', start: '2025-02-01', end: '2026-01-31', annualCost: '60000', qualifications: {} }],
   ],
 ];
+
+// Organisation de la structure (fictive) : directions COMEX et responsables de tiers.
+const DIRECTIONS = [
+  ['OPS', 'Direction des Opérations', 'Sophie Bernard', ['Julie', 'Petit', 'julie.petit@banque-exemple.example', '01 45 00 10 01']],
+  ['DSI', 'Direction des Systèmes d’Information', 'Marc Dubois', ['Thomas', 'Roux', 'thomas.roux@banque-exemple.example', '01 45 00 10 02']],
+  ['FIN', 'Direction Financière', 'Isabelle Moreau', ['Nadia', 'Benali', 'nadia.benali@banque-exemple.example', '01 45 00 10 03']],
+  ['RISK', 'Direction des Risques et de la Conformité', 'Antoine Lambert', ['Éric', 'Fontaine', 'eric.fontaine@banque-exemple.example', '']],
+];
+
+function seedOrganisation(db) {
+  const org = {};
+  DIRECTIONS.forEach(([key, title, head, [firstName, lastName, email, phone]], i) => {
+    const directionId = Number(db.prepare('INSERT INTO directions (data, position) VALUES (?, ?)').run(JSON.stringify({ title, head }), i).lastInsertRowid);
+    const managerId = Number(
+      db.prepare('INSERT INTO tiers_managers (data) VALUES (?)').run(JSON.stringify({ firstName, lastName, email, phone, directionId })).lastInsertRowid,
+    );
+    org[key] = { directionId, managerId };
+  });
+  return org;
+}
 
 const EXTRA_QUALIFS = {
   'CTR-2024-001': { PECI: { note: 'Hébergement des systèmes de paiement' }, ABE: { critical: true }, RES: { critical: true } },
@@ -93,18 +117,19 @@ const EXTRA_QUALIFS = {
 };
 
 function seedTiers(db) {
+  const org = seedOrganisation(db);
   const ids = [];
   for (const [tiers, prestations] of OTHER_TIERS) {
-    const id = insertTiers(db, { contactName: '', contactEmail: '', group: '', notes: '', doraCode: '', ...tiers }, null);
+    const id = insertTiers(db, { contacts: [], group: '', notes: '', doraCode: '', ...tiers }, null);
     ids.push(id);
-    for (const p of prestations) {
-      insertPrestation(db, id, { description: '', entity: 'Banque Exemple SA', status: 'active', start: '', end: '', annualCost: '', nextReview: '', doraContract: '', ...p }, null);
+    for (const { org: key, ...p } of prestations) {
+      insertPrestation(db, id, { description: '', entity: 'Banque Exemple SA', status: 'active', start: '', end: '', annualCost: '', nextReview: '', doraContract: '', owner: '', ...org[key], ...p }, null);
     }
   }
   syncFromDora(db, null);
   for (const p of allPrestations(db)) {
     const extra = EXTRA_QUALIFS[p.data.doraContract];
-    if (extra) updatePrestation(db, p.id, p.tiers_id, { ...p.data, owner: 'DSI', nextReview: '2026-09-30', qualifications: { ...p.data.qualifications, ...extra } }, null);
+    if (extra) updatePrestation(db, p.id, p.tiers_id, { ...p.data, ...org.DSI, nextReview: '2026-09-30', qualifications: { ...p.data.qualifications, ...extra } }, null);
   }
   return ids;
 }

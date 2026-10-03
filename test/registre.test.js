@@ -195,7 +195,7 @@ test('tiers et prestations : qualifications cumulables et périmètre', async ()
   assert.equal(xlsx.status, 200);
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(xlsx.body);
-  assert.deepEqual(wb.worksheets.map((w) => w.name), ['Tiers', 'Prestations']);
+  assert.deepEqual(wb.worksheets.map((w) => w.name), ['Tiers', 'Prestations', 'Contacts des tiers']);
   assert.equal(wb.getWorksheet('Prestations').rowCount, (await admin('/api/tiers')).body.prestations.length + 1);
 });
 
@@ -355,13 +355,16 @@ test('base sur disque : données conservées, structure mise à jour avec copie 
     // Base créée par une version antérieure du code (sans numéro de version de structure).
     const old = new DatabaseSync(file);
     old.exec("CREATE TABLE tiers (id INTEGER PRIMARY KEY AUTOINCREMENT, data TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')), updated_at TEXT NOT NULL DEFAULT (datetime('now')), updated_by INTEGER)");
-    old.prepare('INSERT INTO tiers (data) VALUES (?)').run(JSON.stringify({ name: 'Tiers existant' }));
+    old.prepare('INSERT INTO tiers (data) VALUES (?)').run(JSON.stringify({ name: 'Tiers existant', contactName: 'Claire Martin', contactEmail: 'claire@exemple.fr' }));
     old.close();
 
     let db = openDb(file);
     assert.equal(db.migration.from, 0);
     assert.equal(db.prepare('PRAGMA user_version').get().user_version, SCHEMA_VERSION);
-    assert.equal(JSON.parse(db.prepare('SELECT data FROM tiers').get().data).name, 'Tiers existant');
+    const migrated = JSON.parse(db.prepare('SELECT data FROM tiers').get().data);
+    assert.equal(migrated.name, 'Tiers existant');
+    assert.deepEqual(migrated.contacts, [{ role: 'Contact principal', firstName: 'Claire', lastName: 'Martin', email: 'claire@exemple.fr', phone: '' }]);
+    assert.equal(migrated.contactName, undefined);
     assert.ok(db.prepare('SELECT 1 FROM regulations').get(), 'tables ajoutées');
     assert.ok(db.migration.backup);
     assert.equal(readdirSync(join(dir, 'sauvegardes')).length, 1);
@@ -380,4 +383,57 @@ test('base sur disque : données conservées, structure mise à jour avec copie 
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test('organisation de la structure, prestations et contacts des tiers', async () => {
+  const admin = await login('admin.global');
+  const org = (await admin('/api/organisation')).body;
+  assert.equal(org.directions.length, 4);
+  const ops = org.directions.find((d) => d.title === 'Direction des Opérations');
+  assert.equal(ops.head, 'Sophie Bernard');
+  assert.ok(ops.usage > 0 && ops.managers === 1);
+
+  // Seul l'administrateur global gère l'organisation ; tout le monde la lit.
+  const tiersAdmin = await login('admin.tiers');
+  assert.equal((await tiersAdmin('/api/organisation')).status, 200);
+  assert.equal((await tiersAdmin('/api/organisation/directions', { method: 'POST', body: { data: { title: 'X', head: 'Y' } } })).status, 403);
+  assert.equal((await admin('/api/organisation/directions', { method: 'POST', body: { data: { title: 'Direction juridique' } } })).status, 422);
+  const dj = (await admin('/api/organisation/directions', { method: 'POST', body: { data: { title: 'Direction juridique', head: 'Léa Garnier' } } })).body;
+  const mgr = (await admin('/api/organisation/managers', { method: 'POST', body: { data: { firstName: 'Paul', lastName: 'Simon', directionId: dj.id, email: 'p.simon@exemple.fr' } } })).body;
+  assert.equal((await admin('/api/organisation/managers', { method: 'POST', body: { data: { lastName: 'Z', directionId: 9999 } } })).status, 422);
+
+  // La prestation reprend direction et responsable ; une référence inconnue est refusée.
+  const tiers = (await admin('/api/tiers', { method: 'POST', body: { data: { name: 'Cabinet Juridique Test', contacts: [{ role: 'DG', firstName: 'Anne', lastName: 'Roy', email: 'a.roy@cjt.example', phone: '+33 1 23 45 67 89' }] } } })).body;
+  assert.equal(tiers.data.contacts.length, 1);
+  assert.equal((await admin('/api/prestations', { method: 'POST', body: { tiersId: tiers.id, data: { title: 'Conseil', directionId: 9999 } } })).status, 422);
+  const presta = (await admin('/api/prestations', { method: 'POST', body: { tiersId: tiers.id, data: { title: 'Conseil juridique', directionId: dj.id, managerId: mgr.id } } })).body;
+  assert.equal(presta.data.directionId, dj.id);
+  assert.equal(presta.data.managerId, mgr.id);
+
+  // Suppression refusée tant que la direction ou le responsable est utilisé.
+  assert.equal((await admin(`/api/organisation/directions/${dj.id}`, { method: 'DELETE' })).status, 409);
+  assert.equal((await admin(`/api/organisation/managers/${mgr.id}`, { method: 'DELETE' })).status, 409);
+
+  // Contacts : fonction obligatoire, e-mail et téléphone contrôlés.
+  const bad = await admin(`/api/tiers/${tiers.id}`, { method: 'PUT', body: { data: { name: 'Cabinet Juridique Test', contacts: [{ role: 'DPO', lastName: 'Roy', phone: 'abc' }] } } });
+  assert.equal(bad.status, 422);
+  assert.match(bad.body.errors.contacts, /téléphone/);
+  assert.equal((await admin(`/api/tiers/${tiers.id}`, { method: 'PUT', body: { data: { name: 'Cabinet Juridique Test', contacts: [{ firstName: 'Anne' }] } } })).status, 422);
+
+  // Export Excel : colonnes d'organisation et onglet des contacts.
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load((await admin('/api/tiers/export.xlsx')).body);
+  const ws = wb.getWorksheet('Prestations');
+  const header = ws.getRow(1).values;
+  const row = ws.getRows(2, ws.rowCount - 1).find((r) => r.getCell(2).value === 'Conseil juridique');
+  assert.equal(row.getCell(header.indexOf('Direction COMEX')).value, 'Direction juridique');
+  assert.equal(row.getCell(header.indexOf('Responsable COMEX')).value, 'Léa Garnier');
+  assert.equal(row.getCell(header.indexOf('Responsable du tiers')).value, 'Paul Simon');
+  const contacts = wb.getWorksheet('Contacts des tiers');
+  assert.ok(contacts.getRows(2, contacts.rowCount - 1).some((r) => r.getCell(1).value === 'Cabinet Juridique Test' && r.getCell(2).value === 'DG'));
+
+  await admin(`/api/prestations/${presta.id}`, { method: 'DELETE' });
+  await admin(`/api/tiers/${tiers.id}`, { method: 'DELETE' });
+  assert.equal((await admin(`/api/organisation/managers/${mgr.id}`, { method: 'DELETE' })).status, 200);
+  assert.equal((await admin(`/api/organisation/directions/${dj.id}`, { method: 'DELETE' })).status, 200);
 });

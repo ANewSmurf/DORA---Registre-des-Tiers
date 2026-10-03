@@ -118,6 +118,20 @@ export const TIERS_CATEGORIES = [
   'Autre',
 ];
 
+/** Fonctions proposées pour les contacts chez un tiers (saisie libre possible). */
+export const CONTACT_ROLES = [
+  'Directeur général (DG)',
+  'Directeur général délégué',
+  'Délégué à la protection des données (DPO)',
+  'Responsable de la sécurité (RSSI)',
+  'Directeur des opérations',
+  'Responsable commercial',
+  'Responsable juridique',
+  'Responsable de la continuité d’activité',
+  'Interlocuteur opérationnel',
+  'Contact facturation',
+];
+
 export const ID_TYPES = ['SIREN', 'LEI', 'TVA', 'EUID', 'Autre'];
 
 export const PRESTATION_DOMAINS = [
@@ -143,6 +157,67 @@ export const STATUS_BY_CODE = Object.fromEntries(STATUSES.map((s) => [s.code, s]
 const str = (v, max = 500) => (v === null || v === undefined ? '' : String(v).trim().slice(0, max));
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_RE = /^\+?[0-9 ().\-]{4,30}$/;
+const idOf = (v) => (Number.isInteger(Number(v)) && Number(v) > 0 ? Number(v) : null);
+
+/** Contact unique des anciennes fiches (nom et e-mail) converti en ligne du tableau des contacts. */
+export function legacyContact(name, email) {
+  const full = str(name, 160);
+  if (!full && !str(email)) return null;
+  const [firstName, ...rest] = full.split(/\s+/);
+  return { role: 'Contact principal', firstName: rest.length ? firstName : '', lastName: rest.length ? rest.join(' ') : full, email: str(email, 200), phone: '' };
+}
+
+/** Nettoie le tableau des contacts d'un tiers ; renvoie { contacts, error }. */
+export function cleanContacts(list) {
+  const contacts = (Array.isArray(list) ? list : [])
+    .slice(0, 50)
+    .map((c) => ({
+      role: str(c?.role, 120),
+      firstName: str(c?.firstName, 80),
+      lastName: str(c?.lastName, 80),
+      email: str(c?.email, 200),
+      phone: str(c?.phone, 30),
+    }))
+    .filter((c) => Object.values(c).some(Boolean));
+  let error = null;
+  contacts.forEach((c, i) => {
+    if (error) return;
+    const n = `Contact n° ${i + 1}`;
+    if (!c.role) error = `${n} : la fonction est obligatoire`;
+    else if (!c.firstName && !c.lastName) error = `${n} : indiquer au moins le nom`;
+    else if (c.email && !EMAIL_RE.test(c.email)) error = `${n} : adresse e-mail invalide`;
+    else if (c.phone && !PHONE_RE.test(c.phone)) error = `${n} : numéro de téléphone invalide`;
+  });
+  return { contacts, error };
+}
+
+/** Direction représentée au COMEX ; renvoie { data, errors }. */
+export function cleanDirection(input = {}) {
+  const data = { title: str(input.title, 160), head: str(input.head, 160) };
+  const errors = {};
+  if (!data.title) errors.title = 'Le titre de la direction est obligatoire';
+  if (!data.head) errors.head = 'Le nom du responsable COMEX est obligatoire';
+  return { data, errors };
+}
+
+/** Responsable de tiers (personne interne) ; renvoie { data, errors }. */
+export function cleanManager(input = {}) {
+  const data = {
+    firstName: str(input.firstName, 80),
+    lastName: str(input.lastName, 80),
+    email: str(input.email, 200),
+    phone: str(input.phone, 30),
+    directionId: idOf(input.directionId),
+  };
+  const errors = {};
+  if (!data.lastName) errors.lastName = 'Le nom est obligatoire';
+  if (data.email && !EMAIL_RE.test(data.email)) errors.email = 'Adresse e-mail invalide';
+  if (data.phone && !PHONE_RE.test(data.phone)) errors.phone = 'Numéro de téléphone invalide';
+  return { data, errors };
+}
+
+export const personName = (p) => (p ? [p.firstName, p.lastName].filter(Boolean).join(' ') : '');
 
 /** Nettoie une fiche tiers ; renvoie { data, errors }. */
 export function cleanTiers(input = {}) {
@@ -153,16 +228,19 @@ export function cleanTiers(input = {}) {
     identifier: str(input.identifier, 60),
     country: str(input.country, 2).toUpperCase(),
     group: str(input.group, 200),
-    contactName: str(input.contactName, 120),
-    contactEmail: str(input.contactEmail, 200),
+    contacts: [],
     notes: str(input.notes, 4000),
     // Code du prestataire TIC dans le registre DORA (b_05.01.0010) quand le tiers y figure.
     doraCode: str(input.doraCode, 60),
   };
+  // Les anciennes fiches n'avaient qu'un contact (nom et e-mail).
+  const legacy = input.contacts === undefined ? legacyContact(input.contactName, input.contactEmail) : null;
+  const { contacts, error } = cleanContacts(legacy ? [legacy] : input.contacts);
+  data.contacts = contacts;
   const errors = {};
   if (!data.name) errors.name = 'Le nom du tiers est obligatoire';
   if (data.country && !/^[A-Z]{2}$/.test(data.country)) errors.country = 'Code pays à deux lettres (ex. FR)';
-  if (data.contactEmail && !EMAIL_RE.test(data.contactEmail)) errors.contactEmail = 'Adresse e-mail invalide';
+  if (error) errors.contacts = error;
   return { data, errors };
 }
 
@@ -182,6 +260,10 @@ export function cleanPrestation(input = {}, regulations = DEFAULT_REGULATIONS) {
     description: str(input.description, 4000),
     domain: str(input.domain, 80),
     entity: str(input.entity, 200),
+    // Organisation interne : direction représentée au COMEX et responsable du tiers.
+    directionId: idOf(input.directionId),
+    managerId: idOf(input.managerId),
+    // Responsable saisi en texte libre avant l'organisation de la structure (conservé pour mémoire).
     owner: str(input.owner, 120),
     status: STATUS_BY_CODE[input.status] ? input.status : 'active',
     start: str(input.start, 10),
