@@ -2,6 +2,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { DEFAULT_REGULATIONS } from '../public/shared/tiers-model.js';
 
 const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS users (
@@ -53,6 +54,16 @@ CREATE TABLE IF NOT EXISTS user_tiers (
   tiers_id INTEGER NOT NULL REFERENCES tiers(id) ON DELETE CASCADE,
   PRIMARY KEY (user_id, tiers_id)
 );
+CREATE TABLE IF NOT EXISTS regulations (
+  code TEXT PRIMARY KEY,
+  data TEXT NOT NULL,
+  position INTEGER NOT NULL DEFAULT 0,
+  active INTEGER NOT NULL DEFAULT 1
+);
+CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS audit (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   ts TEXT NOT NULL DEFAULT (datetime('now')),
@@ -70,6 +81,12 @@ export function openDb(file = ':memory:') {
   const db = new DatabaseSync(file);
   db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
   db.exec(SCHEMA_SQL);
+  // Régulations par défaut au premier démarrage (modifiables ensuite par l'administrateur global).
+  if (!db.prepare('SELECT 1 FROM regulations LIMIT 1').get()) {
+    DEFAULT_REGULATIONS.forEach((r, i) =>
+      db.prepare('INSERT INTO regulations (code, data, position) VALUES (?, ?, ?)').run(r.code, JSON.stringify(r), i),
+    );
+  }
   return db;
 }
 

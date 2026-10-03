@@ -36,7 +36,8 @@ import {
   syncFromDora,
   exportTiersWorkbook,
 } from './tiers.js';
-import { cleanTiers, cleanPrestation } from '../public/shared/tiers-model.js';
+import { cleanTiers, cleanPrestation, cleanRegulation, DORA_CODE } from '../public/shared/tiers-model.js';
+import { listRegulations, getRegulation, regulationUsage, getSettings, saveSettings } from './regulations.js';
 
 const PUBLIC_DIR = fileURLToPath(new URL('../public/', import.meta.url));
 const MIME = {
@@ -416,7 +417,7 @@ export function createApp(db, { secureCookies = false } = {}) {
     const body = await readJson(req);
     const tiers = getTiers(db, Number(body.tiersId)) || fail(400, 'Tiers inconnu');
     if (!canEditTiers(user, tiersScope(db, user), tiers.id)) fail(403, 'Ce tiers ne vous est pas rattaché');
-    const { data, errors } = cleanPrestation(body.data);
+    const { data, errors } = cleanPrestation(body.data, listRegulations(db, { activeOnly: true }));
     invalid(errors);
     const id = insertPrestation(db, tiers.id, data, user.id);
     audit(db, user, 'création', { tbl: 'prestations', recordId: id, detail: data });
@@ -430,8 +431,13 @@ export function createApp(db, { secureCookies = false } = {}) {
     const tiersId = body.tiersId ? Number(body.tiersId) : existing.tiers_id;
     if (!getTiers(db, tiersId)) fail(400, 'Tiers inconnu');
     if (!canEditTiers(user, scope, existing.tiers_id) || !canEditTiers(user, scope, tiersId)) fail(403, 'Ce tiers ne vous est pas rattaché');
-    const { data, errors } = cleanPrestation(body.data);
+    const active = listRegulations(db, { activeOnly: true });
+    const { data, errors } = cleanPrestation(body.data, active);
     invalid(errors);
+    // Les qualifications d'une régulation désactivée ne sont pas éditables : elles sont conservées.
+    for (const [code, v] of Object.entries(existing.data.qualifications || {})) {
+      if (!active.some((r) => r.code === code)) data.qualifications[code] = v;
+    }
     updatePrestation(db, existing.id, tiersId, data, user.id);
     audit(db, user, 'modification', { tbl: 'prestations', recordId: existing.id, detail: data });
     send(res, 200, getPrestation(db, existing.id));
@@ -454,12 +460,80 @@ export function createApp(db, { secureCookies = false } = {}) {
     const scope = tiersScope(db, user);
     const tiers = allTiers(db).filter((t) => !scope || scope.has(t.id));
     const ids = new Set(tiers.map((t) => t.id));
-    const buf = Buffer.from(await exportTiersWorkbook(tiers, allPrestations(db).filter((p) => ids.has(p.tiers_id))));
+    const buf = Buffer.from(
+      await exportTiersWorkbook(tiers, allPrestations(db).filter((p) => ids.has(p.tiers_id)), listRegulations(db, { activeOnly: true })),
+    );
     audit(db, user, 'export Excel des tiers', { detail: `${tiers.length} tiers` });
     send(res, 200, buf, {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'Content-Disposition': `attachment; filename="tiers-et-prestations-${new Date().toISOString().slice(0, 10)}.xlsx"`,
     });
+  });
+
+  // ---- Régulations et paramètres de l'organisation --------------------------------------
+  route('GET', '/api/regulations', async (req, res, { user }) => {
+    const usage = regulationUsage(db);
+    send(res, 200, {
+      regulations: listRegulations(db).map((r) => ({ ...r, usage: usage[r.code] || 0 })),
+      settings: getSettings(db),
+      doraCode: DORA_CODE,
+    });
+  });
+
+  route('POST', '/api/regulations', async (req, res, { user }) => {
+    requireAdmin(user);
+    const { data, errors } = cleanRegulation((await readJson(req)).data);
+    invalid(errors);
+    if (getRegulation(db, data.code)) fail(409, 'Une régulation porte déjà ce code', { errors: { code: 'Code déjà utilisé' } });
+    const pos = db.prepare('SELECT COALESCE(MAX(position), -1) + 1 AS p FROM regulations').get().p;
+    db.prepare('INSERT INTO regulations (code, data, position) VALUES (?, ?, ?)').run(data.code, JSON.stringify(data), pos);
+    audit(db, user, 'création régulation', { detail: data });
+    send(res, 201, getRegulation(db, data.code));
+  });
+
+  route('PUT', '/api/regulations/:code', async (req, res, { user, params }) => {
+    requireAdmin(user);
+    const existing = getRegulation(db, params.code) || fail(404, 'Régulation introuvable');
+    const body = await readJson(req);
+    const { data, errors } = cleanRegulation({ ...body.data, code: existing.code });
+    invalid(errors);
+    const active = body.active === undefined ? existing.active : !!body.active;
+    if (existing.code === DORA_CODE && !active) fail(400, 'La régulation DORA est reliée au registre d’information : elle ne peut pas être désactivée');
+    db.prepare('UPDATE regulations SET data = ?, active = ? WHERE code = ?').run(JSON.stringify(data), active ? 1 : 0, existing.code);
+    audit(db, user, 'modification régulation', { detail: { ...data, active } });
+    send(res, 200, getRegulation(db, existing.code));
+  });
+
+  route('POST', '/api/regulations/:code/move', async (req, res, { user, params }) => {
+    requireAdmin(user);
+    const dir = Number((await readJson(req)).dir) < 0 ? -1 : 1;
+    const list = listRegulations(db);
+    const i = list.findIndex((r) => r.code === params.code);
+    if (i < 0) fail(404, 'Régulation introuvable');
+    const j = i + dir;
+    if (j >= 0 && j < list.length) {
+      [list[i], list[j]] = [list[j], list[i]];
+      tx(db, () => list.forEach((r, k) => db.prepare('UPDATE regulations SET position = ? WHERE code = ?').run(k, r.code)));
+    }
+    send(res, 200, { ok: true });
+  });
+
+  route('DELETE', '/api/regulations/:code', async (req, res, { user, params }) => {
+    requireAdmin(user);
+    const existing = getRegulation(db, params.code) || fail(404, 'Régulation introuvable');
+    if (existing.code === DORA_CODE) fail(400, 'La régulation DORA est reliée au registre d’information : elle ne peut pas être supprimée');
+    const used = regulationUsage(db)[existing.code] || 0;
+    if (used) fail(409, `${used} prestation(s) portent cette qualification : désactivez la régulation plutôt que de la supprimer`);
+    db.prepare('DELETE FROM regulations WHERE code = ?').run(existing.code);
+    audit(db, user, 'suppression régulation', { detail: existing });
+    send(res, 200, { ok: true });
+  });
+
+  route('PUT', '/api/settings', async (req, res, { user }) => {
+    requireAdmin(user);
+    const settings = saveSettings(db, (await readJson(req)).data || {});
+    audit(db, user, 'modification des paramètres', { detail: settings });
+    send(res, 200, settings);
   });
 
   // ---- Utilisateurs (administrateur global) --------------------------------------------

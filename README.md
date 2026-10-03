@@ -14,6 +14,15 @@ relèvent de DORA ou non. Chaque prestation porte ses qualifications réglementa
 Une même prestation peut être à la fois DORA et PECI, par exemple ; DORA, Résolution et ABE
 permettent en plus de signaler la prestation comme critique (★).
 
+Ces cinq régulations sont créées au premier démarrage. L'administrateur global les gère dans
+**Administration › Régulations et organisation** pour adapter l'outil à d'autres types d'entreprises :
+ajout (par exemple Solvabilité II, RGPD ou NIS 2, proposés en suggestion), modification du libellé, de la
+description, de la case « critique » et de la couleur, ordre d'affichage, désactivation (les
+qualifications déjà saisies sont conservées) et suppression d'une régulation inutilisée. La régulation
+DORA, reliée au registre d'information, reste toujours active. Le nom de l'organisation s'affiche dans le menu.
+
+![Régulations et organisation](docs/captures/regulations.png)
+
 L'application tient aussi le **registre d'information DORA** (article 28 du règlement (UE) 2022/2554)
 au format du template EBA « Register of Information » (`template/dora-roi-template.xlsb`) : les
 14 tableaux b_01.01 à b_07.01, leurs colonnes, consignes et listes de valeurs.
@@ -131,6 +140,7 @@ server/access.js                  profils et périmètre des tiers rattachés
 server/checks.js                  contrôles de complétude et de cohérence
 server/xlsx.js                    export / import au format du template
 server/tiers.js                   tiers, prestations, reprise du registre DORA, export Excel des tiers
+server/regulations.js             régulations paramétrables et paramètres de l'organisation
 server/app.js                     API HTTP et fichiers statiques
 public/                           interface web (HTML/CSS/JS sans framework)
 public/shared/validate.js         règles de format partagées navigateur / serveur
