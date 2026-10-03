@@ -1004,6 +1004,26 @@ function checksView() {
 // ---------------------------------------------------------------------------------------
 // Import / export
 // ---------------------------------------------------------------------------------------
+/** Correspondance des identifiants de fonction locaux avec les identifiants EBA (F1, F2…). */
+function functionIdsBox() {
+  const box = h('div', { class: 'fn-ids' });
+  api('/api/function-ids')
+    .then((rows) => {
+      if (!rows.length) return;
+      box.replaceChildren(
+        h('h3', { style: 'margin-top:16px' }, 'Identifiants de fonction'),
+        h('p', { class: 'muted small' }, 'Le format EBA impose « F » suivi d’un nombre. Vos identifiants locaux restent dans le registre ; l’export utilise ces équivalents, toujours les mêmes d’un export à l’autre, et les liste dans un onglet « Identifiants de fonction ». Ils sont attribués à chaque export pour les nouvelles fonctions.'),
+        h(
+          'div',
+          { class: 'table-wrap fn-ids-table' },
+          h('table', { class: 'data' }, h('thead', {}, h('tr', {}, h('th', {}, 'Identifiant local'), h('th', {}, 'Identifiant EBA'))), h('tbody', {}, rows.map((r) => h('tr', {}, h('td', {}, r.local), h('td', { class: 'code' }, r.eba))))),
+        ),
+      );
+    })
+    .catch(() => {});
+  return box;
+}
+
 function exchangeView() {
   const canImp = state.me.permissions.import;
   const file = h('input', { type: 'file', accept: '.xlsx' });
@@ -1065,6 +1085,7 @@ function exchangeView() {
         h('p', {}, 'Génère un classeur Excel reprenant la structure du template : un onglet par tableau (b_01.01 à b_07.01), codes colonnes en ligne 4, libellés en ligne 5, types en ligne 6, données à partir de la ligne 7, listes de valeurs EBA dans l’onglet « Drop down ».'),
         h('p', { class: 'muted small' }, state.me.permissions.global ? 'L’export contient l’ensemble du registre.' : 'L’export est limité à vos prestataires rattachés et au référentiel.'),
         h('a', { class: 'btn primary', href: '/api/export.xlsx' }, 'Télécharger le registre (.xlsx)'),
+        functionIdsBox(),
       ),
       h(
         'div',

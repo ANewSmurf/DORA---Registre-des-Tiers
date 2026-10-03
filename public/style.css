@@ -323,3 +323,5 @@ ul.plain li.row { display: flex; justify-content: space-between; gap: 8px; }
   .reg-order, .reg-usage { display: none; }
   .reg-actions { grid-column: 1 / -1; justify-content: flex-start; }
 }
+.fn-ids-table { max-height: 260px; overflow-y: auto; }
+.fn-ids-table tbody tr { cursor: default; }

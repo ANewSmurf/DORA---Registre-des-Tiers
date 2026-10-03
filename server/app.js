@@ -38,6 +38,7 @@ import {
 } from './tiers.js';
 import { cleanTiers, cleanPrestation, cleanRegulation, DORA_CODE } from '../public/shared/tiers-model.js';
 import { listRegulations, getRegulation, regulationUsage, getSettings, saveSettings } from './regulations.js';
+import { ebaFunctionIds, listFunctionIds } from './function-ids.js';
 
 const PUBLIC_DIR = fileURLToPath(new URL('../public/', import.meta.url));
 const MIME = {
@@ -317,7 +318,9 @@ export function createApp(db, { secureCookies = false } = {}) {
     const visible = visibleRecords(user, allRecords(db));
     const byTable = {};
     for (const r of visible) (byTable[r.tbl] ||= []).push(r);
-    const buf = Buffer.from(await exportWorkbook(byTable));
+    const localIds = visible.flatMap((r) => [r.data['b_06.01.0010'], r.data['b_02.02.0050']]);
+    const functionIds = ebaFunctionIds(db, localIds);
+    const buf = Buffer.from(await exportWorkbook(byTable, functionIds));
     audit(db, user, 'export Excel', { detail: `${visible.length} lignes` });
     const date = new Date().toISOString().slice(0, 10);
     send(res, 200, buf, {
@@ -468,6 +471,12 @@ export function createApp(db, { secureCookies = false } = {}) {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'Content-Disposition': `attachment; filename="tiers-et-prestations-${new Date().toISOString().slice(0, 10)}.xlsx"`,
     });
+  });
+
+  // Correspondance identifiants de fonction locaux → EBA (attribués au premier export).
+  route('GET', '/api/function-ids', async (req, res, { user }) => {
+    const local = new Set(visibleRecords(user, allRecords(db, 'b_06.01')).map((r) => r.data['b_06.01.0010']));
+    send(res, 200, listFunctionIds(db).filter((r) => r.local !== r.eba && local.has(r.local)));
   });
 
   // ---- Régulations et paramètres de l'organisation --------------------------------------

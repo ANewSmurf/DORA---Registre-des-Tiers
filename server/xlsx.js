@@ -29,7 +29,13 @@ function toCell(col, v) {
   return s;
 }
 
-export async function exportWorkbook(recordsByTable) {
+const FUNCTION_SHEET = 'Identifiants de fonction';
+
+/**
+ * `functionIds` (Map identifiant local → identifiant EBA) remplace les identifiants de fonction
+ * locaux par leur équivalent conforme ; la correspondance est jointe dans un onglet à part.
+ */
+export async function exportWorkbook(recordsByTable, functionIds = null) {
   const wb = new ExcelJS.Workbook();
   wb.creator = 'Registre DORA';
   wb.created = new Date();
@@ -79,10 +85,27 @@ export async function exportWorkbook(recordsByTable) {
     ws.views = [{ state: 'frozen', ySplit: 6, xSplit: 1 }];
     (recordsByTable[table.code] || []).forEach((rec, i) => {
       table.columns.forEach((col, j) => {
-        const v = toCell(col, rec.data[col.code]);
+        const raw = rec.data[col.code];
+        const v = toCell(col, col.kind === 'function' && functionIds?.has(raw) ? functionIds.get(raw) : raw);
         if (v !== null) ws.getCell(FIRST_DATA_ROW + i, j + 2).value = v;
       });
     });
+  }
+  const renamed = [...(functionIds || [])].filter(([local, eba]) => local !== eba);
+  const exported = new Set(
+    Object.values(recordsByTable)
+      .flat()
+      .flatMap((r) => [r.data['b_06.01.0010'], r.data['b_02.02.0050']]),
+  );
+  const pairs = renamed.filter(([local]) => exported.has(local));
+  if (pairs.length) {
+    const ws = wb.addWorksheet(FUNCTION_SHEET);
+    ws.columns = [
+      { header: 'Identifiant EBA', width: 18 },
+      { header: 'Identifiant local', width: 32 },
+    ];
+    ws.getRow(1).font = { bold: true };
+    pairs.sort((a, b) => Number(a[1].slice(1)) - Number(b[1].slice(1))).forEach(([local, eba]) => ws.addRow([eba, local]));
   }
   return wb.xlsx.writeBuffer();
 }
@@ -156,6 +179,24 @@ function findHeader(ws, table, warnings) {
     if (Object.keys(colIndex).length) return { headerRow: r, colIndex };
   }
   return { headerRow: null, colIndex: {} };
+}
+
+/** Un export de l'application rétablit les identifiants de fonction locaux à la réimportation. */
+function restoreLocalFunctionIds(wb, out) {
+  const ws = wb.getWorksheet(FUNCTION_SHEET);
+  if (!ws) return;
+  const toLocal = new Map();
+  ws.eachRow((row, r) => {
+    const eba = String(row.getCell(1).value ?? '').trim();
+    const local = String(row.getCell(2).value ?? '').trim();
+    if (r > 1 && eba && local) toLocal.set(eba, local);
+  });
+  for (const [tbl, col] of [
+    ['b_06.01', 'b_06.01.0010'],
+    ['b_02.02', 'b_02.02.0050'],
+  ]) {
+    for (const d of out[tbl] || []) if (toLocal.has(d[col])) d[col] = toLocal.get(d[col]);
+  }
 }
 
 /** Convertit les types de code eba_qCO:qxNNNN en LEI, EUID ou PAYS_TYPE (ex. FR_CRN). */
@@ -248,9 +289,10 @@ export async function importWorkbook(buffer) {
     }
     out[table.code] = rows;
   }
-  const ignored = wb.worksheets.filter((ws) => !used.has(ws) && ws.name !== 'Drop down' && ws.rowCount > 0);
+  const ignored = wb.worksheets.filter((ws) => !used.has(ws) && ws.name !== 'Drop down' && ws.name !== FUNCTION_SHEET && ws.rowCount > 0);
   if (ignored.length) warnings.push(`Onglets non reconnus, ignorés : ${ignored.map((ws) => ws.name).join(', ')}`);
   if (!used.size) warnings.push('Aucun onglet du registre trouvé (noms attendus : b_01.01 ou b_01_01, etc.)');
+  restoreLocalFunctionIds(wb, out);
   convertCodeTypes(out, warnings);
   return { tables: out, warnings };
 }

@@ -80,8 +80,12 @@ lisible par tous pour permettre la saisie. Tous les exports respectent ce périm
 - **Fiche prestataire** consolidée (b_05.01 + accords + évaluations + chaîne d'approvisionnement) et
   assistant de création d'un accord (b_02.01 + b_02.02 en une fois).
 - **Contrôles** : formats (LEI avec clé ISO 17442, dates ISO 8601, entiers, montants, `LEI` /
-  `EUID`, `PAYS_TYPE`, `Fn`), champs obligatoires et conditionnels du template, références entre tableaux,
+  `EUID`, `PAYS_TYPE`), champs obligatoires et conditionnels du template, références entre tableaux,
   cohérence du type de code avec b_05.01, doublons de clé.
+- **Identifiants de fonction locaux** : le registre accepte vos identifiants (ex. `BRED-CRIT-F4`) ; l'export
+  au format EBA les remplace par un identifiant conforme (`F` suivi d'un nombre, colonnes b_06.01.0010 et
+  b_02.02.0050), attribué au premier export puis conservé, et liste la correspondance dans un onglet
+  « Identifiants de fonction ». Réimporter cet export restitue les identifiants locaux.
 - **Export Excel au format du template** : un onglet par tableau, codes colonnes en ligne 4, libellés
   en ligne 5, types en ligne 6, données à partir de la ligne 7, valeurs codées EBA (`eba_GA:FR`…),
   onglet « Drop down » et listes déroulantes de validation.
