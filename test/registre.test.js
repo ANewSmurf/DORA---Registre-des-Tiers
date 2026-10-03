@@ -145,6 +145,55 @@ test('administrateur de tiers : modifie son périmètre, pas celui des autres', 
   assert.equal(del.status, 403);
 });
 
+test('tiers et prestations : qualifications cumulables et périmètre', async () => {
+  const admin = await login('admin.global');
+  const all = (await admin('/api/tiers')).body;
+  assert.equal(all.tiers.length, 8);
+  const cloud = all.tiers.find((t) => t.data.name === 'CloudCo Europe');
+  assert.ok(cloud.data.doraCode, 'tiers repris du registre DORA');
+  const cloudPresta = all.prestations.find((p) => p.tiers_id === cloud.id);
+  assert.deepEqual(Object.keys(cloudPresta.data.qualifications).sort(), ['ABE', 'DORA', 'PECI', 'RES']);
+  assert.equal(cloudPresta.data.doraContract, 'CTR-2024-001');
+
+  // Reprise idempotente du registre DORA (le premier appel reprend le prestataire créé plus haut).
+  await admin('/api/tiers/sync-dora', { method: 'POST' });
+  assert.deepEqual((await admin('/api/tiers/sync-dora', { method: 'POST' })).body, { newTiers: 0, linkedTiers: 0, newPrestations: 0 });
+  assert.equal((await admin('/api/tiers', { method: 'POST', body: { data: { name: ' ' } } })).status, 422);
+
+  // Lecteur des tiers : son tiers direct + celui de son prestataire TIC, en lecture seule.
+  const reader = await login('lecteur.tiers');
+  const mine = (await reader('/api/tiers')).body;
+  assert.deepEqual(mine.tiers.map((t) => t.data.name).sort(), ['InfoGérance Services SAS', 'Éditique Nord']);
+  assert.ok(mine.tiers.every((t) => !t.editable));
+  assert.equal((await reader('/api/prestations', { method: 'POST', body: { tiersId: mine.tiers[0].id, data: { title: 'X' } } })).status, 403);
+
+  // Administrateur de tiers : ajoute une prestation DORA + PECI à son tiers, pas à celui d'un autre.
+  const ta = await login('admin.tiers');
+  const scope = (await ta('/api/tiers')).body;
+  const transval = scope.tiers.find((t) => t.data.name === 'Transval Sécurité');
+  const created = await ta('/api/prestations', {
+    method: 'POST',
+    body: { tiersId: transval.id, data: { title: 'Supervision des automates', status: 'projet', qualifications: { DORA: { critical: true }, PECI: { critical: true, note: 'Disponibilité' }, XYZ: {} } } },
+  });
+  assert.equal(created.status, 201);
+  assert.deepEqual(created.body.data.qualifications, { DORA: { critical: true, note: '' }, PECI: { critical: false, note: 'Disponibilité' } });
+  const other = all.tiers.find((t) => t.data.name === 'Banque Partenaire Europe');
+  assert.ok(!scope.tiers.some((t) => t.id === other.id));
+  assert.equal((await ta(`/api/tiers/${other.id}`, { method: 'PUT', body: { data: { name: 'Pirate' } } })).status, 403);
+  assert.equal((await ta('/api/prestations', { method: 'POST', body: { tiersId: other.id, data: { title: 'X' } } })).status, 403);
+  const newTiers = await ta('/api/tiers', { method: 'POST', body: { data: { name: 'Nouveau sous-traitant', country: 'fr' } } });
+  assert.equal(newTiers.status, 201);
+  assert.equal(newTiers.body.data.country, 'FR');
+  assert.ok((await ta('/api/tiers')).body.tiers.some((t) => t.id === newTiers.body.id && t.editable));
+
+  const xlsx = await admin('/api/tiers/export.xlsx');
+  assert.equal(xlsx.status, 200);
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(xlsx.body);
+  assert.deepEqual(wb.worksheets.map((w) => w.name), ['Tiers', 'Prestations']);
+  assert.equal(wb.getWorksheet('Prestations').rowCount, (await admin('/api/tiers')).body.prestations.length + 1);
+});
+
 test('administrateur global : utilisateurs, contrôles, export puis import', async () => {
   const api = await login('admin.global');
   const providers = (await api('/api/register')).body.tables['b_05.01'];

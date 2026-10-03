@@ -22,6 +22,21 @@ import { isGlobal, canManageUsers, canImport, canWriteTable, computeScope, inSco
 import { allRecords, getRecord, insertRecord, updateRecord, deleteRecord, audit, tx } from './db.js';
 import { runChecks } from './checks.js';
 import { exportWorkbook, importWorkbook } from './xlsx.js';
+import {
+  allTiers,
+  allPrestations,
+  getTiers,
+  getPrestation,
+  insertTiers,
+  updateTiers,
+  insertPrestation,
+  updatePrestation,
+  tiersScope,
+  canEditTiers,
+  syncFromDora,
+  exportTiersWorkbook,
+} from './tiers.js';
+import { cleanTiers, cleanPrestation } from '../public/shared/tiers-model.js';
 
 const PUBLIC_DIR = fileURLToPath(new URL('../public/', import.meta.url));
 const MIME = {
@@ -114,6 +129,10 @@ function publicUser(db, row) {
     .prepare('SELECT provider_id FROM user_providers WHERE user_id = ? ORDER BY provider_id')
     .all(row.id)
     .map((r) => r.provider_id);
+  const tiers = db
+    .prepare('SELECT tiers_id FROM user_tiers WHERE user_id = ? ORDER BY tiers_id')
+    .all(row.id)
+    .map((r) => r.tiers_id);
   return {
     id: row.id,
     username: row.username,
@@ -123,6 +142,7 @@ function publicUser(db, row) {
     active: !!row.active,
     createdAt: row.created_at,
     providerIds: providers,
+    tiersIds: tiers,
   };
 }
 
@@ -167,10 +187,12 @@ export function createApp(db, { secureCookies = false } = {}) {
     send(res, 200, {
       ...user,
       providers: providers.map((p) => ({ id: p.id, code: p.data['b_05.01.0010'], name: p.data['b_05.01.0030'] })),
+      tiersCount: isGlobal(user) ? null : tiersScope(db, user).size,
       permissions: {
         global: isGlobal(user),
         manageUsers: canManageUsers(user),
         import: canImport(user),
+        createTiers: user.role === 'global_admin' || user.role === 'tiers_admin',
         writeTables: schema.tables.filter((t) => canWriteTable(user, t.code)).map((t) => t.code),
       },
     });
@@ -336,11 +358,121 @@ export function createApp(db, { secureCookies = false } = {}) {
       }
       audit(db, user, `import Excel (${mode === 'replace' ? 'remplacement' : 'ajout'})`, { detail: summary });
     });
-    send(res, 200, { mode, summary, warnings: parsed.warnings });
+    // Les prestataires et accords importés apparaissent aussi dans les tiers, qualifiés DORA.
+    const tiers = tx(db, () => syncFromDora(db, user));
+    send(res, 200, { mode, summary, tiers, warnings: parsed.warnings });
+  });
+
+  // ---- Tiers et prestations -----------------------------------------------------------
+  route('GET', '/api/tiers', async (req, res, { user }) => {
+    const scope = tiersScope(db, user);
+    const tiers = allTiers(db).filter((t) => !scope || scope.has(t.id));
+    const ids = new Set(tiers.map((t) => t.id));
+    send(res, 200, {
+      tiers: tiers.map((t) => ({ id: t.id, data: t.data, updated_at: t.updated_at, editable: canEditTiers(user, scope, t.id) })),
+      prestations: allPrestations(db)
+        .filter((p) => ids.has(p.tiers_id))
+        .map((p) => ({ id: p.id, tiers_id: p.tiers_id, data: p.data, updated_at: p.updated_at })),
+    });
+  });
+
+  const invalid = (errors) => Object.keys(errors).length && fail(422, 'Certaines valeurs sont invalides', { errors });
+
+  route('POST', '/api/tiers', async (req, res, { user }) => {
+    if (user.role !== 'global_admin' && user.role !== 'tiers_admin') fail(403, 'Votre profil ne permet pas de créer un tiers');
+    const { data, errors } = cleanTiers((await readJson(req)).data);
+    invalid(errors);
+    const id = tx(db, () => {
+      const newId = insertTiers(db, data, user.id);
+      // Un administrateur de tiers est rattaché au tiers qu'il crée.
+      if (user.role === 'tiers_admin') db.prepare('INSERT INTO user_tiers (user_id, tiers_id) VALUES (?, ?)').run(user.id, newId);
+      audit(db, user, 'création', { tbl: 'tiers', recordId: newId, detail: data });
+      return newId;
+    });
+    send(res, 201, getTiers(db, id));
+  });
+
+  route('PUT', '/api/tiers/:id', async (req, res, { user, params }) => {
+    const existing = getTiers(db, Number(params.id)) || fail(404, 'Tiers introuvable');
+    if (!canEditTiers(user, tiersScope(db, user), existing.id)) fail(403, 'Ce tiers ne vous est pas rattaché');
+    const { data, errors } = cleanTiers({ ...(await readJson(req)).data, doraCode: existing.data.doraCode });
+    invalid(errors);
+    updateTiers(db, existing.id, data, user.id);
+    audit(db, user, 'modification', { tbl: 'tiers', recordId: existing.id, detail: data });
+    send(res, 200, getTiers(db, existing.id));
+  });
+
+  route('DELETE', '/api/tiers/:id', async (req, res, { user, params }) => {
+    if (user.role !== 'global_admin') fail(403, "Seul l'administrateur global peut supprimer un tiers");
+    const existing = getTiers(db, Number(params.id)) || fail(404, 'Tiers introuvable');
+    tx(db, () => {
+      db.prepare('DELETE FROM tiers WHERE id = ?').run(existing.id);
+      audit(db, user, 'suppression', { tbl: 'tiers', recordId: existing.id, detail: existing.data });
+    });
+    send(res, 200, { ok: true });
+  });
+
+  route('POST', '/api/prestations', async (req, res, { user }) => {
+    const body = await readJson(req);
+    const tiers = getTiers(db, Number(body.tiersId)) || fail(400, 'Tiers inconnu');
+    if (!canEditTiers(user, tiersScope(db, user), tiers.id)) fail(403, 'Ce tiers ne vous est pas rattaché');
+    const { data, errors } = cleanPrestation(body.data);
+    invalid(errors);
+    const id = insertPrestation(db, tiers.id, data, user.id);
+    audit(db, user, 'création', { tbl: 'prestations', recordId: id, detail: data });
+    send(res, 201, getPrestation(db, id));
+  });
+
+  route('PUT', '/api/prestations/:id', async (req, res, { user, params }) => {
+    const existing = getPrestation(db, Number(params.id)) || fail(404, 'Prestation introuvable');
+    const body = await readJson(req);
+    const scope = tiersScope(db, user);
+    const tiersId = body.tiersId ? Number(body.tiersId) : existing.tiers_id;
+    if (!getTiers(db, tiersId)) fail(400, 'Tiers inconnu');
+    if (!canEditTiers(user, scope, existing.tiers_id) || !canEditTiers(user, scope, tiersId)) fail(403, 'Ce tiers ne vous est pas rattaché');
+    const { data, errors } = cleanPrestation(body.data);
+    invalid(errors);
+    updatePrestation(db, existing.id, tiersId, data, user.id);
+    audit(db, user, 'modification', { tbl: 'prestations', recordId: existing.id, detail: data });
+    send(res, 200, getPrestation(db, existing.id));
+  });
+
+  route('DELETE', '/api/prestations/:id', async (req, res, { user, params }) => {
+    const existing = getPrestation(db, Number(params.id)) || fail(404, 'Prestation introuvable');
+    if (!canEditTiers(user, tiersScope(db, user), existing.tiers_id)) fail(403, 'Ce tiers ne vous est pas rattaché');
+    db.prepare('DELETE FROM prestations WHERE id = ?').run(existing.id);
+    audit(db, user, 'suppression', { tbl: 'prestations', recordId: existing.id, detail: existing.data });
+    send(res, 200, { ok: true });
+  });
+
+  route('POST', '/api/tiers/sync-dora', async (req, res, { user }) => {
+    if (user.role !== 'global_admin') fail(403, "Réservé à l'administrateur global");
+    send(res, 200, tx(db, () => syncFromDora(db, user)));
+  });
+
+  route('GET', '/api/tiers/export.xlsx', async (req, res, { user }) => {
+    const scope = tiersScope(db, user);
+    const tiers = allTiers(db).filter((t) => !scope || scope.has(t.id));
+    const ids = new Set(tiers.map((t) => t.id));
+    const buf = Buffer.from(await exportTiersWorkbook(tiers, allPrestations(db).filter((p) => ids.has(p.tiers_id))));
+    audit(db, user, 'export Excel des tiers', { detail: `${tiers.length} tiers` });
+    send(res, 200, buf, {
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': `attachment; filename="tiers-et-prestations-${new Date().toISOString().slice(0, 10)}.xlsx"`,
+    });
   });
 
   // ---- Utilisateurs (administrateur global) --------------------------------------------
   const requireAdmin = (user) => canManageUsers(user) || fail(403, 'Réservé à l’administrateur global');
+
+  function setTiers(userId, role, tiersIds) {
+    db.prepare('DELETE FROM user_tiers WHERE user_id = ?').run(userId);
+    if (role !== 'tiers_admin' && role !== 'tiers_reader') return;
+    const valid = new Set(allTiers(db).map((t) => t.id));
+    for (const id of tiersIds || []) {
+      if (valid.has(Number(id))) db.prepare('INSERT OR IGNORE INTO user_tiers (user_id, tiers_id) VALUES (?, ?)').run(userId, Number(id));
+    }
+  }
 
   function setProviders(userId, role, providerIds) {
     db.prepare('DELETE FROM user_providers WHERE user_id = ?').run(userId);
@@ -372,6 +504,7 @@ export function createApp(db, { secureCookies = false } = {}) {
         .run(b.username, String(b.displayName || b.username).slice(0, 120), hashPassword(b.password), b.role);
       const newId = Number(r.lastInsertRowid);
       setProviders(newId, b.role, b.providerIds);
+      setTiers(newId, b.role, b.tiersIds);
       audit(db, user, 'création utilisateur', { detail: { username: b.username, role: b.role } });
       return newId;
     });
@@ -401,9 +534,10 @@ export function createApp(db, { secureCookies = false } = {}) {
       );
       if (b.password) db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hashPassword(b.password), row.id);
       if (b.providerIds !== undefined || role !== row.role) setProviders(row.id, role, b.providerIds ?? []);
+      if (b.tiersIds !== undefined || role !== row.role) setTiers(row.id, role, b.tiersIds ?? []);
       if (!active || b.password) db.prepare('DELETE FROM sessions WHERE user_id = ?').run(row.id);
       audit(db, user, 'modification utilisateur', {
-        detail: { username: row.username, role, active, providerIds: b.providerIds, passwordReset: !!b.password },
+        detail: { username: row.username, role, active, providerIds: b.providerIds, tiersIds: b.tiersIds, passwordReset: !!b.password },
       });
     });
     send(res, 200, publicUser(db, db.prepare('SELECT * FROM users WHERE id = ?').get(row.id)));

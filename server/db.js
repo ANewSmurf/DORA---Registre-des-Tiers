@@ -32,6 +32,27 @@ CREATE TABLE IF NOT EXISTS records (
   updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL
 );
 CREATE INDEX IF NOT EXISTS records_tbl ON records(tbl);
+CREATE TABLE IF NOT EXISTS tiers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  data TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL
+);
+CREATE TABLE IF NOT EXISTS prestations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  tiers_id INTEGER NOT NULL REFERENCES tiers(id) ON DELETE CASCADE,
+  data TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS prestations_tiers ON prestations(tiers_id);
+CREATE TABLE IF NOT EXISTS user_tiers (
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  tiers_id INTEGER NOT NULL REFERENCES tiers(id) ON DELETE CASCADE,
+  PRIMARY KEY (user_id, tiers_id)
+);
 CREATE TABLE IF NOT EXISTS audit (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   ts TEXT NOT NULL DEFAULT (datetime('now')),

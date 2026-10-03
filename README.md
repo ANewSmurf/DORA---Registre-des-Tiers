@@ -1,22 +1,54 @@
-# Registre d'information DORA – registre des tiers TIC
+# Registre des tiers – DORA, PECI, PBE, Résolution, Externalisation ABE
 
-Application web de tenue du **registre d'information DORA** (article 28 du règlement (UE) 2022/2554),
-construite à partir du template EBA « Register of Information » (`template/dora-roi-template.xlsb`).
-Elle reprend les 14 tableaux du template (b_01.01 à b_07.01), leurs colonnes, consignes et listes de
-valeurs, et propose quatre profils d'utilisateur.
+Application web de suivi de **tous les tiers** de l'entreprise et de leurs **prestations**, qu'elles
+relèvent de DORA ou non. Chaque prestation porte ses qualifications réglementaires, cumulables :
 
-![Tableau de bord](docs/captures/tableau-de-bord.png)
+| Qualification | Signification |
+| --- | --- |
+| **DORA** | Service TIC fourni par un prestataire tiers, à déclarer au registre d'information DORA |
+| **PECI** | Prestation essentielle, critique ou importante |
+| **PBE** | Prestation bancaire externalisée |
+| **Résolution** | Prestation nécessaire à la continuité des fonctions critiques en cas de résolution |
+| **Externalisation ABE** | Accord d'externalisation au sens des orientations de l'ABE |
+
+Une même prestation peut être à la fois DORA et PECI, par exemple ; DORA, Résolution et ABE
+permettent en plus de signaler la prestation comme critique (★).
+
+L'application tient aussi le **registre d'information DORA** (article 28 du règlement (UE) 2022/2554)
+au format du template EBA « Register of Information » (`template/dora-roi-template.xlsb`) : les
+14 tableaux b_01.01 à b_07.01, leurs colonnes, consignes et listes de valeurs.
+
+![Accueil](docs/captures/accueil.png)
+
+## Tiers et prestations
+
+- **Accueil** : prestations par qualification, revues à mener dans les 30 jours, échéances à 6 mois,
+  cumuls de qualifications, tiers récemment mis à jour.
+- **Tiers** : fiches en cartes avec recherche, filtre par catégorie et par qualification.
+- **Fiche tiers** : informations du tiers et ses prestations (période, responsable, coût, prochaine
+  revue, qualifications et justifications) ; lien vers la fiche du registre DORA quand le tiers y figure.
+- **Prestations** : liste filtrable par qualification et par statut.
+- **Export Excel** des tiers et prestations (une colonne par qualification).
+- **Reprise du registre DORA** : chaque prestataire TIC (b_05.01) devient un tiers et chaque accord
+  (b_02.02) une prestation qualifiée DORA, automatiquement après chaque import du registre.
+
+![Fiche tiers](docs/captures/fiche-tiers.png)
+
+![Qualification d'une prestation](docs/captures/qualification-prestation.png)
 
 ## Profils
 
 | Profil | Lecture | Écriture | Administration |
 | --- | --- | --- | --- |
-| **Administrateur global de la plateforme** | Tout le registre | Tout le registre, y compris le référentiel (entités b_01.xx, fonctions b_06.01) | Utilisateurs, rattachements, import Excel, journal d'audit |
-| **Lecteur global** | Tout le registre | — | — |
-| **Administrateur de tiers** | Ses prestataires rattachés + référentiel | Données de ses prestataires (accords, signataires, utilisateurs, chaîne d'approvisionnement, évaluations) ; peut déclarer un nouveau prestataire, qui lui est alors rattaché | — |
-| **Lecteur des tiers rattachés** | Ses prestataires rattachés + référentiel | — | — |
+| **Administrateur global de la plateforme** | Tous les tiers et tout le registre | Tous les tiers et prestations ; tout le registre, y compris le référentiel (entités b_01.xx, fonctions b_06.01) | Utilisateurs, rattachements, import Excel, journal d'audit |
+| **Lecteur global** | Tous les tiers et tout le registre | — | — |
+| **Administrateur de tiers** | Ses tiers et prestataires rattachés + référentiel | Ses tiers et leurs prestations ; données DORA de ses prestataires (accords, signataires, utilisateurs, chaîne d'approvisionnement, évaluations) ; peut créer un tiers ou déclarer un prestataire, qui lui est alors rattaché | — |
+| **Lecteur des tiers rattachés** | Ses tiers et prestataires rattachés + référentiel | — | — |
 
-Les deux profils **lecteurs** arrivent sur une **vue simplifiée**, sans tableaux ni codes EBA :
+Un utilisateur rattaché voit les tiers qui lui sont rattachés directement et ceux qui correspondent à
+ses prestataires TIC du registre DORA.
+
+Dans la partie « Registre d'information DORA », les deux profils **lecteurs** ont une **vue simplifiée**, sans tableaux ni codes EBA :
 une synthèse (chiffres clés, points d'attention sur les prestataires critiques, prochaines échéances),
 des fiches prestataires en langage clair (contrats, fonctions soutenues, localisation des données,
 remplaçabilité, plan de sortie, dernier audit, sous-traitants), la liste des contrats avec leur statut,
@@ -62,7 +94,8 @@ npm run demo     # base en mémoire avec données et comptes fictifs
 ```
 
 Comptes de démonstration (mot de passe `Demo-DORA-2026`) : `admin.global`, `lecteur.global`,
-`admin.tiers` (CloudCo Europe, PayRoll Software GmbH), `lecteur.tiers` (InfoGérance Services SAS).
+`admin.tiers` (Transval Sécurité, CloudCo Europe, PayRoll Software GmbH), `lecteur.tiers` (Éditique Nord,
+InfoGérance Services SAS).
 
 En exploitation :
 
@@ -85,7 +118,8 @@ npm test
 ```
 
 Les tests couvrent la validation des formats, les droits de chacun des quatre profils, le calcul de
-périmètre, les contrôles de cohérence et l'aller-retour export → import Excel.
+périmètre (registre et tiers), les qualifications cumulables, la reprise du registre DORA, les contrôles
+de cohérence et l'aller-retour export → import Excel.
 
 ## Structure
 
@@ -96,9 +130,11 @@ server/schema.js                  schéma enrichi (libellés FR, obligatoire/con
 server/access.js                  profils et périmètre des tiers rattachés
 server/checks.js                  contrôles de complétude et de cohérence
 server/xlsx.js                    export / import au format du template
+server/tiers.js                   tiers, prestations, reprise du registre DORA, export Excel des tiers
 server/app.js                     API HTTP et fichiers statiques
 public/                           interface web (HTML/CSS/JS sans framework)
 public/shared/validate.js         règles de format partagées navigateur / serveur
+public/shared/tiers-model.js      qualifications, catégories et contrôles des tiers et prestations
 ```
 
 Pour mettre à jour le template EBA : remplacer `template/dora-roi-template.xlsb` puis
