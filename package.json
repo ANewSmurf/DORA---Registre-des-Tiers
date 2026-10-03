@@ -10,6 +10,7 @@
   "scripts": {
     "start": "node --disable-warning=ExperimentalWarning server/index.js",
     "demo": "node --disable-warning=ExperimentalWarning server/index.js --demo",
+    "demo:reset": "node --disable-warning=ExperimentalWarning server/index.js --demo --reset",
     "test": "node --disable-warning=ExperimentalWarning --test test/*.test.js",
     "extract-template": "python3 scripts/extract_template.py template/dora-roi-template.xlsb > server/schema.json"
   },
