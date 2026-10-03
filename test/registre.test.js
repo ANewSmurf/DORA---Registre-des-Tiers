@@ -2,7 +2,11 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 
-import { openDb } from '../server/db.js';
+import { openDb, SCHEMA_VERSION } from '../server/db.js';
+import { DatabaseSync } from 'node:sqlite';
+import { mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { createApp } from '../server/app.js';
 import { seedDemo, DEMO_PASSWORD, makeLei } from '../server/seed.js';
 import { schema, tableByCode } from '../server/schema.js';
@@ -342,4 +346,38 @@ test('identifiants de fonction locaux : identifiant EBA stable à l’export, re
   const parsed = await importWorkbook(await first.wb.xlsx.writeBuffer());
   assert.ok(parsed.tables['b_06.01'].some((d) => d['b_06.01.0010'] === 'BANQ-CRIT-F9'));
   assert.ok(!parsed.warnings.some((w) => /Identifiants de fonction/.test(w)));
+});
+
+test('base sur disque : données conservées, structure mise à jour avec copie de sécurité', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'registre-'));
+  try {
+    const file = join(dir, 'registre.db');
+    // Base créée par une version antérieure du code (sans numéro de version de structure).
+    const old = new DatabaseSync(file);
+    old.exec("CREATE TABLE tiers (id INTEGER PRIMARY KEY AUTOINCREMENT, data TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')), updated_at TEXT NOT NULL DEFAULT (datetime('now')), updated_by INTEGER)");
+    old.prepare('INSERT INTO tiers (data) VALUES (?)').run(JSON.stringify({ name: 'Tiers existant' }));
+    old.close();
+
+    let db = openDb(file);
+    assert.equal(db.migration.from, 0);
+    assert.equal(db.prepare('PRAGMA user_version').get().user_version, SCHEMA_VERSION);
+    assert.equal(JSON.parse(db.prepare('SELECT data FROM tiers').get().data).name, 'Tiers existant');
+    assert.ok(db.prepare('SELECT 1 FROM regulations').get(), 'tables ajoutées');
+    assert.ok(db.migration.backup);
+    assert.equal(readdirSync(join(dir, 'sauvegardes')).length, 1);
+    db.prepare('INSERT INTO tiers (data) VALUES (?)').run(JSON.stringify({ name: 'Ajouté' }));
+    db.close();
+
+    // Redémarrage : rien à migrer, aucune nouvelle copie, données intactes.
+    db = openDb(file);
+    assert.equal(db.migration.backup, null);
+    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM tiers').get().n, 2);
+    db.exec(`PRAGMA user_version = ${SCHEMA_VERSION + 1}`);
+    db.close();
+
+    // Base plus récente que le code : refus d'ouvrir plutôt que risquer de l'abîmer.
+    assert.throws(() => openDb(file), /plus récente/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

@@ -103,7 +103,8 @@ Prérequis : Node.js 22.13 ou plus récent (base SQLite intégrée `node:sqlite`
 
 ```bash
 npm install
-npm run demo     # base en mémoire avec données et comptes fictifs
+npm run demo        # données et comptes fictifs, base data/demo.db
+npm run demo:reset  # efface la base de démonstration et repart des données fictives
 ```
 
 Comptes de démonstration (mot de passe `Demo-DORA-2026`) : `admin.global`, `lecteur.global`,
@@ -120,9 +121,30 @@ ADMIN_PASSWORD='un-mot-de-passe-solide' npm start
 | --- | --- | --- |
 | `PORT` | `3000` | Port HTTP |
 | `HOST` | `127.0.0.1` | Interface d'écoute |
-| `DB_PATH` | `data/registre.db` | Fichier SQLite |
+| `DB_PATH` | `data/registre.db` (`data/demo.db` en démonstration) | Fichier SQLite |
 | `ADMIN_USER` / `ADMIN_PASSWORD` | `admin` / aléatoire affiché au premier démarrage | Compte administrateur global créé si la base est vide |
 | `SECURE_COOKIES` | — | `1` pour ajouter l'attribut `Secure` au cookie de session (derrière HTTPS) |
+
+## Base de données et mises à jour
+
+Toutes les données sont dans un fichier SQLite du dossier `data/` (chemin modifiable par `DB_PATH`),
+conservé d'un redémarrage à l'autre. Ce dossier est exclu du suivi git : un `git pull` ne le
+remplace jamais (attention en revanche à `git clean -x`, qui supprime les fichiers ignorés).
+
+La structure de la base porte un numéro de version. Au démarrage, l'application applique les
+migrations manquantes (déclarées dans `MIGRATIONS`, `server/db.js`) sans toucher aux données, après
+avoir copié la base dans `data/sauvegardes/`. Une base plus récente que le code est refusée plutôt que
+modifiée. Pour faire évoluer la structure, ajouter une migration en fin de liste sans modifier les
+précédentes.
+
+Mise à jour d'une installation :
+
+```bash
+git pull && npm install && npm start
+```
+
+Pour une sauvegarde à chaud : `sqlite3 data/registre.db ".backup data/sauvegardes/manuelle.db"`, ou
+copie du dossier `data/` serveur arrêté.
 
 ## Tests
 

@@ -1,7 +1,7 @@
 // Stockage SQLite (module node:sqlite intégré à Node.js ≥ 22.13, aucune dépendance native).
 import { DatabaseSync } from 'node:sqlite';
-import { mkdirSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { existsSync, mkdirSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { DEFAULT_REGULATIONS } from '../public/shared/tiers-model.js';
 
 const SCHEMA_SQL = `
@@ -80,11 +80,56 @@ CREATE TABLE IF NOT EXISTS audit (
 );
 `;
 
+/**
+ * Évolutions de la structure de la base, appliquées dans l'ordre et une seule fois.
+ * La version atteinte est mémorisée dans la base (PRAGMA user_version) : une mise à jour du code
+ * (git pull) n'applique que les migrations manquantes et conserve toutes les données.
+ * Pour faire évoluer la structure, ajouter une migration en fin de liste ; ne jamais modifier
+ * ni supprimer une migration déjà publiée.
+ */
+export const MIGRATIONS = [
+  // Structure initiale (idempotente : les bases créées avant le suivi des versions la possèdent déjà).
+  { version: 1, name: 'structure initiale', up: (db) => db.exec(SCHEMA_SQL) },
+];
+export const SCHEMA_VERSION = MIGRATIONS.at(-1).version;
+
+/** Applique les migrations en attente ; renvoie { from, to, backup }. */
+export function migrate(db, file = ':memory:') {
+  const from = db.prepare('PRAGMA user_version').get().user_version;
+  if (from > SCHEMA_VERSION) {
+    throw new Error(
+      `La base ${file} est en version ${from}, plus récente que celle prise en charge par ce code (${SCHEMA_VERSION}) : mettre à jour l'application.`,
+    );
+  }
+  const pending = MIGRATIONS.filter((m) => m.version > from);
+  let backup = null;
+  if (pending.length && file !== ':memory:' && db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' LIMIT 1").get()) {
+    // Copie de sécurité de la base existante avant de modifier sa structure.
+    const dir = join(dirname(file), 'sauvegardes');
+    mkdirSync(dir, { recursive: true });
+    const stamp = new Date().toISOString().replace(/[-:]/g, '').replace('T', '-').slice(0, 15);
+    backup = join(dir, `avant-v${SCHEMA_VERSION}-${stamp}.db`);
+    if (!existsSync(backup)) db.prepare('VACUUM INTO ?').run(backup);
+  }
+  for (const m of pending) {
+    tx(db, () => {
+      m.up(db);
+      db.exec(`PRAGMA user_version = ${m.version}`);
+    });
+  }
+  return { from, to: SCHEMA_VERSION, backup };
+}
+
 export function openDb(file = ':memory:') {
   if (file !== ':memory:') mkdirSync(dirname(file), { recursive: true });
   const db = new DatabaseSync(file);
   db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
-  db.exec(SCHEMA_SQL);
+  try {
+    db.migration = migrate(db, file);
+  } catch (e) {
+    db.close();
+    throw e;
+  }
   // Régulations par défaut au premier démarrage (modifiables ensuite par l'administrateur global).
   if (!db.prepare('SELECT 1 FROM regulations LIMIT 1').get()) {
     DEFAULT_REGULATIONS.forEach((r, i) =>
