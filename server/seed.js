@@ -123,13 +123,20 @@ function seedTiers(db) {
     const id = insertTiers(db, { contacts: [], group: '', notes: '', doraCode: '', ...tiers }, null);
     ids.push(id);
     for (const { org: key, ...p } of prestations) {
-      insertPrestation(db, id, { description: '', entity: 'Banque Exemple SA', status: 'active', start: '', end: '', annualCost: '', nextReview: '', doraContract: '', owner: '', ...org[key], ...p }, null);
+      insertPrestation(db, [id], { description: '', entity: 'Banque Exemple SA', status: 'active', start: '', end: '', annualCost: '', nextReview: '', doraContract: '', owner: '', ...org[key], ...p }, null);
     }
   }
+  // Prestation partagée entre deux tiers (fictive).
+  insertPrestation(
+    db,
+    [ids[0], ids[3]],
+    { title: 'Collecte et destruction sécurisée des documents', description: '', domain: 'Logistique et sûreté', entity: 'Banque Exemple SA', status: 'active', start: '2024-01-01', end: '', annualCost: '48000', nextReview: '2026-11-30', doraContract: '', owner: '', ...org.OPS, qualifications: { ABE: {} } },
+    null,
+  );
   syncFromDora(db, null);
   for (const p of allPrestations(db)) {
     const extra = EXTRA_QUALIFS[p.data.doraContract];
-    if (extra) updatePrestation(db, p.id, p.tiers_id, { ...p.data, ...org.DSI, nextReview: '2026-09-30', qualifications: { ...p.data.qualifications, ...extra } }, null);
+    if (extra) updatePrestation(db, p.id, { ...p.data, ...org.DSI, nextReview: '2026-09-30', qualifications: { ...p.data.qualifications, ...extra } }, null);
   }
   return ids;
 }

@@ -156,7 +156,7 @@ test('tiers et prestations : qualifications cumulables et périmètre', async ()
   assert.equal(all.tiers.length, 8);
   const cloud = all.tiers.find((t) => t.data.name === 'CloudCo Europe');
   assert.ok(cloud.data.doraCode, 'tiers repris du registre DORA');
-  const cloudPresta = all.prestations.find((p) => p.tiers_id === cloud.id);
+  const cloudPresta = all.prestations.find((p) => p.tiersIds.includes(cloud.id));
   assert.deepEqual(Object.keys(cloudPresta.data.qualifications).sort(), ['ABE', 'DORA', 'PECI', 'RES']);
   assert.equal(cloudPresta.data.doraContract, 'CTR-2024-001');
 
@@ -356,6 +356,8 @@ test('base sur disque : données conservées, structure mise à jour avec copie 
     const old = new DatabaseSync(file);
     old.exec("CREATE TABLE tiers (id INTEGER PRIMARY KEY AUTOINCREMENT, data TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')), updated_at TEXT NOT NULL DEFAULT (datetime('now')), updated_by INTEGER)");
     old.prepare('INSERT INTO tiers (data) VALUES (?)').run(JSON.stringify({ name: 'Tiers existant', contactName: 'Claire Martin', contactEmail: 'claire@exemple.fr' }));
+    old.exec("CREATE TABLE prestations (id INTEGER PRIMARY KEY AUTOINCREMENT, tiers_id INTEGER NOT NULL REFERENCES tiers(id) ON DELETE CASCADE, data TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')), updated_at TEXT NOT NULL DEFAULT (datetime('now')), updated_by INTEGER)");
+    old.prepare('INSERT INTO prestations (id, tiers_id, data) VALUES (5, 1, ?)').run(JSON.stringify({ title: 'Prestation existante' }));
     old.close();
 
     let db = openDb(file);
@@ -365,6 +367,10 @@ test('base sur disque : données conservées, structure mise à jour avec copie 
     assert.equal(migrated.name, 'Tiers existant');
     assert.deepEqual(migrated.contacts, [{ role: 'Contact principal', firstName: 'Claire', lastName: 'Martin', email: 'claire@exemple.fr', phone: '' }]);
     assert.equal(migrated.contactName, undefined);
+    // Le tiers de chaque prestation passe dans la table de liaison ; les identifiants sont conservés.
+    assert.deepEqual({ ...db.prepare('SELECT prestation_id, tiers_id FROM prestation_tiers').get() }, { prestation_id: 5, tiers_id: 1 });
+    assert.equal(JSON.parse(db.prepare('SELECT data FROM prestations WHERE id = 5').get().data).title, 'Prestation existante');
+    assert.ok(Number(db.prepare("INSERT INTO prestations (data) VALUES ('{}')").run().lastInsertRowid) > 5);
     assert.ok(db.prepare('SELECT 1 FROM regulations').get(), 'tables ajoutées');
     assert.ok(db.migration.backup);
     assert.equal(readdirSync(join(dir, 'sauvegardes')).length, 1);
@@ -436,4 +442,51 @@ test('organisation de la structure, prestations et contacts des tiers', async ()
   await admin(`/api/tiers/${tiers.id}`, { method: 'DELETE' });
   assert.equal((await admin(`/api/organisation/managers/${mgr.id}`, { method: 'DELETE' })).status, 200);
   assert.equal((await admin(`/api/organisation/directions/${dj.id}`, { method: 'DELETE' })).status, 200);
+});
+
+test('prestations partagées : créer ou sélectionner depuis un tiers ou une prestation', async () => {
+  const admin = await login('admin.global');
+  const all = (await admin('/api/tiers')).body;
+  const byName = (n) => all.tiers.find((t) => t.data.name === n);
+  const transval = byName('Transval Sécurité');
+  const archives = byName('Archives & Co');
+  const partner = byName('Banque Partenaire Europe');
+
+  // Création depuis la vue des prestations : au moins un tiers, éventuellement plusieurs.
+  assert.equal((await admin('/api/prestations', { method: 'POST', body: { tiersIds: [], data: { title: 'Sans tiers' } } })).status, 422);
+  const shared = (await admin('/api/prestations', { method: 'POST', body: { tiersIds: [transval.id, archives.id], data: { title: 'Destruction sécurisée des archives' } } })).body;
+  assert.deepEqual(shared.tiersIds, [transval.id, archives.id].sort((a, b) => a - b));
+
+  // Sélection d'une prestation existante depuis un autre tiers, puis retrait.
+  assert.deepEqual((await admin(`/api/prestations/${shared.id}/tiers`, { method: 'POST', body: { tiersId: partner.id } })).body.tiersIds.length, 3);
+  assert.equal((await admin(`/api/prestations/${shared.id}/tiers/${partner.id}`, { method: 'DELETE' })).status, 200);
+
+  // Administrateur de tiers (Transval) : voit la prestation partagée, ne voit pas Archives & Co.
+  const ta = await login('admin.tiers');
+  const mine = (await ta('/api/tiers')).body;
+  const seen = mine.prestations.find((p) => p.id === shared.id);
+  assert.deepEqual(seen.tiersIds, [transval.id]);
+  assert.equal(seen.others, 1);
+  assert.ok(seen.editable);
+  // Il ne peut ni la supprimer (elle concerne un tiers hors périmètre) ni toucher au lien d'Archives & Co.
+  assert.equal((await ta(`/api/prestations/${shared.id}`, { method: 'DELETE' })).status, 403);
+  assert.equal((await ta(`/api/prestations/${shared.id}/tiers/${archives.id}`, { method: 'DELETE' })).status, 403);
+  assert.equal((await ta(`/api/prestations/${shared.id}/tiers`, { method: 'POST', body: { tiersId: partner.id } })).status, 403);
+  // Une prestation d'un autre tiers hors périmètre ne peut pas être sélectionnée.
+  const foreign = all.prestations.find((p) => p.tiersIds.includes(partner.id));
+  assert.equal((await ta(`/api/prestations/${foreign.id}/tiers`, { method: 'POST', body: { tiersId: transval.id } })).status, 403);
+
+  // Le dernier tiers ne peut pas être retiré.
+  await admin(`/api/prestations/${shared.id}/tiers/${transval.id}`, { method: 'DELETE' });
+  assert.equal((await admin(`/api/prestations/${shared.id}/tiers/${archives.id}`, { method: 'DELETE' })).status, 409);
+
+  // Supprimer un tiers supprime ses prestations propres, pas les prestations partagées.
+  const temp = (await admin('/api/tiers', { method: 'POST', body: { data: { name: 'Tiers temporaire' } } })).body;
+  const own = (await admin('/api/prestations', { method: 'POST', body: { tiersIds: [temp.id], data: { title: 'Propre' } } })).body;
+  await admin(`/api/prestations/${shared.id}/tiers`, { method: 'POST', body: { tiersId: temp.id } });
+  await admin(`/api/tiers/${temp.id}`, { method: 'DELETE' });
+  const after = (await admin('/api/tiers')).body.prestations;
+  assert.ok(!after.some((p) => p.id === own.id));
+  assert.deepEqual(after.find((p) => p.id === shared.id).tiersIds, [archives.id]);
+  await admin(`/api/prestations/${shared.id}`, { method: 'DELETE' });
 });

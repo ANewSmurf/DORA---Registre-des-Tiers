@@ -337,3 +337,19 @@ table.data.contacts tbody tr, .org-table tbody tr { cursor: default; }
 .contacts-editor table.data.edit tbody tr:hover { background: none; }
 .contacts-editor table.data.edit input { width: 100%; min-width: 90px; }
 .contacts-editor > .btn { margin-top: 8px; }
+
+/* Prestations partagées entre tiers */
+.shared-with { color: var(--muted); }
+.shared-with b { color: var(--text); font-weight: 600; }
+.pick-create { width: 100%; }
+.pick-or { text-align: center; margin: 12px 0 8px; }
+.pick-list { display: grid; gap: 6px; margin-top: 10px; max-height: 50vh; overflow-y: auto; }
+.pick-item { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; cursor: pointer; }
+.pick-item:hover { border-color: var(--primary); background: var(--surface-2); }
+.pick-item > div { flex: 1; min-width: 0; }
+.pick-go { color: var(--primary); font-size: 12px; white-space: nowrap; }
+.linked-tiers { display: grid; gap: 8px; margin-top: 10px; }
+.linked-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.linked-row:last-child { border-bottom: none; }
+.linked-row .tiers-cell { color: inherit; text-decoration: none; }
+.tiers-choice { display: grid; gap: 8px; }

@@ -31,8 +31,12 @@ import {
   updateTiers,
   insertPrestation,
   updatePrestation,
+  linkPrestation,
+  unlinkPrestation,
   tiersScope,
   canEditTiers,
+  canEditPrestation,
+  prestationVisible,
   syncFromDora,
   exportTiersWorkbook,
 } from './tiers.js';
@@ -376,8 +380,16 @@ export function createApp(db, { secureCookies = false } = {}) {
     send(res, 200, {
       tiers: tiers.map((t) => ({ id: t.id, data: t.data, updated_at: t.updated_at, editable: canEditTiers(user, scope, t.id) })),
       prestations: allPrestations(db)
-        .filter((p) => ids.has(p.tiers_id))
-        .map((p) => ({ id: p.id, tiers_id: p.tiers_id, data: p.data, updated_at: p.updated_at })),
+        .filter((p) => prestationVisible(scope, p))
+        .map((p) => ({
+          id: p.id,
+          // Seuls les tiers visibles sont transmis ; others = tiers hors périmètre qui partagent la prestation.
+          tiersIds: p.tiersIds.filter((t) => ids.has(t)),
+          others: p.tiersIds.filter((t) => !ids.has(t)).length,
+          data: p.data,
+          updated_at: p.updated_at,
+          editable: canEditPrestation(user, scope, p),
+        })),
     });
   });
 
@@ -415,6 +427,11 @@ export function createApp(db, { secureCookies = false } = {}) {
     if (user.role !== 'global_admin') fail(403, "Seul l'administrateur global peut supprimer un tiers");
     const existing = getTiers(db, Number(params.id)) || fail(404, 'Tiers introuvable');
     tx(db, () => {
+      // Les prestations fournies par ce seul tiers sont supprimées avec lui ; les prestations partagées
+      // restent rattachées aux autres tiers.
+      for (const p of allPrestations(db)) {
+        if (p.tiersIds.length === 1 && p.tiersIds[0] === existing.id) db.prepare('DELETE FROM prestations WHERE id = ?').run(p.id);
+      }
       db.prepare('DELETE FROM tiers WHERE id = ?').run(existing.id);
       audit(db, user, 'suppression', { tbl: 'tiers', recordId: existing.id, detail: existing.data });
     });
@@ -423,23 +440,31 @@ export function createApp(db, { secureCookies = false } = {}) {
 
   route('POST', '/api/prestations', async (req, res, { user }) => {
     const body = await readJson(req);
-    const tiers = getTiers(db, Number(body.tiersId)) || fail(400, 'Tiers inconnu');
-    if (!canEditTiers(user, tiersScope(db, user), tiers.id)) fail(403, 'Ce tiers ne vous est pas rattaché');
+    const scope = tiersScope(db, user);
+    const tiersIds = [...new Set((Array.isArray(body.tiersIds) ? body.tiersIds : [body.tiersId]).map(Number).filter(Boolean))];
+    if (!tiersIds.length) fail(422, 'Choisissez au moins un tiers', { errors: { tiers: 'Choisissez au moins un tiers' } });
+    for (const t of tiersIds) {
+      if (!getTiers(db, t)) fail(400, 'Tiers inconnu');
+      if (!canEditTiers(user, scope, t)) fail(403, 'Ce tiers ne vous est pas rattaché');
+    }
     const { data, errors } = cleanPrestation(body.data, listRegulations(db, { activeOnly: true }));
     checkOrgRefs(data, errors);
     invalid(errors);
-    const id = insertPrestation(db, tiers.id, data, user.id);
-    audit(db, user, 'création', { tbl: 'prestations', recordId: id, detail: data });
+    const id = tx(db, () => insertPrestation(db, tiersIds, data, user.id));
+    audit(db, user, 'création', { tbl: 'prestations', recordId: id, detail: { ...data, tiersIds } });
     send(res, 201, getPrestation(db, id));
   });
 
-  route('PUT', '/api/prestations/:id', async (req, res, { user, params }) => {
-    const existing = getPrestation(db, Number(params.id)) || fail(404, 'Prestation introuvable');
-    const body = await readJson(req);
+  const editablePrestation = (user, id) => {
+    const p = getPrestation(db, Number(id)) || fail(404, 'Prestation introuvable');
     const scope = tiersScope(db, user);
-    const tiersId = body.tiersId ? Number(body.tiersId) : existing.tiers_id;
-    if (!getTiers(db, tiersId)) fail(400, 'Tiers inconnu');
-    if (!canEditTiers(user, scope, existing.tiers_id) || !canEditTiers(user, scope, tiersId)) fail(403, 'Ce tiers ne vous est pas rattaché');
+    if (!canEditPrestation(user, scope, p)) fail(403, 'Cette prestation ne concerne aucun de vos tiers');
+    return { p, scope };
+  };
+
+  route('PUT', '/api/prestations/:id', async (req, res, { user, params }) => {
+    const { p: existing } = editablePrestation(user, params.id);
+    const body = await readJson(req);
     const active = listRegulations(db, { activeOnly: true });
     const { data, errors } = cleanPrestation(body.data, active);
     checkOrgRefs(data, errors);
@@ -448,14 +473,36 @@ export function createApp(db, { secureCookies = false } = {}) {
     for (const [code, v] of Object.entries(existing.data.qualifications || {})) {
       if (!active.some((r) => r.code === code)) data.qualifications[code] = v;
     }
-    updatePrestation(db, existing.id, tiersId, data, user.id);
+    updatePrestation(db, existing.id, data, user.id);
     audit(db, user, 'modification', { tbl: 'prestations', recordId: existing.id, detail: data });
     send(res, 200, getPrestation(db, existing.id));
   });
 
+  // Associer un tiers à une prestation existante (depuis la fiche du tiers ou celle de la prestation).
+  route('POST', '/api/prestations/:id/tiers', async (req, res, { user, params }) => {
+    const { p, scope } = editablePrestation(user, params.id);
+    const tiers = getTiers(db, Number((await readJson(req)).tiersId)) || fail(400, 'Tiers inconnu');
+    if (!canEditTiers(user, scope, tiers.id)) fail(403, 'Ce tiers ne vous est pas rattaché');
+    linkPrestation(db, p.id, tiers.id);
+    audit(db, user, 'association prestation-tiers', { tbl: 'prestations', recordId: p.id, detail: { prestation: p.data.title, tiers: tiers.data.name } });
+    send(res, 200, getPrestation(db, p.id));
+  });
+
+  route('DELETE', '/api/prestations/:id/tiers/:tiersId', async (req, res, { user, params }) => {
+    const { p, scope } = editablePrestation(user, params.id);
+    const tiersId = Number(params.tiersId);
+    if (!p.tiersIds.includes(tiersId)) fail(404, 'Ce tiers n’est pas associé à la prestation');
+    if (!canEditTiers(user, scope, tiersId)) fail(403, 'Ce tiers ne vous est pas rattaché');
+    if (p.tiersIds.length === 1) fail(409, 'Une prestation a toujours au moins un tiers : supprimez-la plutôt');
+    unlinkPrestation(db, p.id, tiersId);
+    audit(db, user, 'dissociation prestation-tiers', { tbl: 'prestations', recordId: p.id, detail: { prestation: p.data.title, tiers: getTiers(db, tiersId)?.data.name } });
+    send(res, 200, getPrestation(db, p.id));
+  });
+
   route('DELETE', '/api/prestations/:id', async (req, res, { user, params }) => {
-    const existing = getPrestation(db, Number(params.id)) || fail(404, 'Prestation introuvable');
-    if (!canEditTiers(user, tiersScope(db, user), existing.tiers_id)) fail(403, 'Ce tiers ne vous est pas rattaché');
+    const { p: existing, scope } = editablePrestation(user, params.id);
+    // Une prestation partagée avec des tiers hors du périmètre de l'utilisateur ne peut qu'être dissociée.
+    if (!existing.tiersIds.every((t) => canEditTiers(user, scope, t))) fail(403, 'Cette prestation concerne aussi des tiers hors de votre périmètre : retirez-la de votre tiers plutôt');
     db.prepare('DELETE FROM prestations WHERE id = ?').run(existing.id);
     audit(db, user, 'suppression', { tbl: 'prestations', recordId: existing.id, detail: existing.data });
     send(res, 200, { ok: true });
@@ -473,7 +520,9 @@ export function createApp(db, { secureCookies = false } = {}) {
     const buf = Buffer.from(
       await exportTiersWorkbook(
         tiers,
-        allPrestations(db).filter((p) => ids.has(p.tiers_id)),
+        allPrestations(db)
+          .filter((p) => prestationVisible(scope, p))
+          .map((p) => ({ ...p, tiersIds: p.tiersIds.filter((t) => ids.has(t)) })),
         listRegulations(db, { activeOnly: true }),
         organisationLabels(db),
       ),

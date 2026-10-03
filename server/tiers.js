@@ -13,8 +13,20 @@ const parse = (r) => ({ ...r, data: JSON.parse(r.data) });
 export function allTiers(db) {
   return db.prepare('SELECT * FROM tiers ORDER BY id').all().map(parse);
 }
+/** Tiers de chaque prestation (table de liaison) : Map id de prestation → [id de tiers]. */
+function prestationLinks(db) {
+  const links = new Map();
+  for (const r of db.prepare('SELECT prestation_id, tiers_id FROM prestation_tiers ORDER BY tiers_id').all()) {
+    (links.get(r.prestation_id) || links.set(r.prestation_id, []).get(r.prestation_id)).push(r.tiers_id);
+  }
+  return links;
+}
 export function allPrestations(db) {
-  return db.prepare('SELECT * FROM prestations ORDER BY id').all().map(parse);
+  const links = prestationLinks(db);
+  return db
+    .prepare('SELECT * FROM prestations ORDER BY id')
+    .all()
+    .map((r) => ({ ...parse(r), tiersIds: links.get(r.id) || [] }));
 }
 export function getTiers(db, id) {
   const r = db.prepare('SELECT * FROM tiers WHERE id = ?').get(id);
@@ -22,7 +34,9 @@ export function getTiers(db, id) {
 }
 export function getPrestation(db, id) {
   const r = db.prepare('SELECT * FROM prestations WHERE id = ?').get(id);
-  return r ? parse(r) : null;
+  if (!r) return null;
+  const tiersIds = db.prepare('SELECT tiers_id FROM prestation_tiers WHERE prestation_id = ? ORDER BY tiers_id').all(id).map((x) => x.tiers_id);
+  return { ...parse(r), tiersIds };
 }
 
 export function insertTiers(db, data, userId) {
@@ -31,19 +45,19 @@ export function insertTiers(db, data, userId) {
 export function updateTiers(db, id, data, userId) {
   db.prepare("UPDATE tiers SET data = ?, updated_at = datetime('now'), updated_by = ? WHERE id = ?").run(JSON.stringify(data), userId ?? null, id);
 }
-export function insertPrestation(db, tiersId, data, userId) {
-  return Number(
-    db.prepare('INSERT INTO prestations (tiers_id, data, updated_by) VALUES (?, ?, ?)').run(tiersId, JSON.stringify(data), userId ?? null)
-      .lastInsertRowid,
-  );
+export function insertPrestation(db, tiersIds, data, userId) {
+  const id = Number(db.prepare('INSERT INTO prestations (data, updated_by) VALUES (?, ?)').run(JSON.stringify(data), userId ?? null).lastInsertRowid);
+  for (const t of tiersIds) linkPrestation(db, id, t);
+  return id;
 }
-export function updatePrestation(db, id, tiersId, data, userId) {
-  db.prepare("UPDATE prestations SET tiers_id = ?, data = ?, updated_at = datetime('now'), updated_by = ? WHERE id = ?").run(
-    tiersId,
-    JSON.stringify(data),
-    userId ?? null,
-    id,
-  );
+export function updatePrestation(db, id, data, userId) {
+  db.prepare("UPDATE prestations SET data = ?, updated_at = datetime('now'), updated_by = ? WHERE id = ?").run(JSON.stringify(data), userId ?? null, id);
+}
+export function linkPrestation(db, prestationId, tiersId) {
+  db.prepare('INSERT OR IGNORE INTO prestation_tiers (prestation_id, tiers_id) VALUES (?, ?)').run(prestationId, tiersId);
+}
+export function unlinkPrestation(db, prestationId, tiersId) {
+  db.prepare('DELETE FROM prestation_tiers WHERE prestation_id = ? AND tiers_id = ?').run(prestationId, tiersId);
 }
 
 /**
@@ -61,6 +75,10 @@ export function tiersScope(db, user) {
 
 export const canEditTiers = (user, scopeIds, tiersId) =>
   user.role === 'global_admin' || (user.role === 'tiers_admin' && scopeIds?.has(tiersId));
+
+/** Une prestation est visible si l'un de ses tiers l'est ; modifiable si l'un de ses tiers l'est. */
+export const prestationVisible = (scopeIds, p) => !scopeIds || p.tiersIds.some((t) => scopeIds.has(t));
+export const canEditPrestation = (user, scopeIds, p) => p.tiersIds.some((t) => canEditTiers(user, scopeIds, t));
 
 const listLabel = (list, code) => {
   const it = schema.lists[list]?.find((x) => x.code === code);
@@ -131,7 +149,7 @@ export function syncFromDora(db, user) {
     if (!groups.has(key)) groups.set(key, { ref: d['b_02.02.0010'], provider: d['b_02.02.0030'], rows: [] });
     groups.get(key).rows.push(d);
   }
-  const existing = new Set(allPrestations(db).filter((p) => p.data.doraContract).map((p) => `${p.data.doraContract}|${p.tiers_id}`));
+  const existing = new Set(allPrestations(db).filter((p) => p.data.doraContract).flatMap((p) => p.tiersIds.map((t) => `${p.data.doraContract}|${t}`)));
   const today = new Date().toISOString().slice(0, 10);
   for (const g of groups.values()) {
     const tiersId = byDora.get(g.provider);
@@ -144,7 +162,7 @@ export function syncFromDora(db, user) {
     const amount = general.get(g.ref)?.['b_02.01.0050'] || '';
     insertPrestation(
       db,
-      tiersId,
+      [tiersId],
       {
         title: services.join(', ') || `Contrat ${g.ref}`,
         description: '',
@@ -196,7 +214,7 @@ export async function exportTiersWorkbook(tiers, prestations, regulations, orgLa
     ['Notes', 'notes', 40],
   ]);
   const byTiers = new Map();
-  for (const p of prestations) (byTiers.get(p.tiers_id) || byTiers.set(p.tiers_id, []).get(p.tiers_id)).push(p);
+  for (const p of prestations) for (const t of p.tiersIds) (byTiers.get(t) || byTiers.set(t, []).get(t)).push(p);
   for (const t of tiers) {
     const own = byTiers.get(t.id) || [];
     const row = { ...t.data, count: own.length, contactCount: (t.data.contacts || []).length };
@@ -224,7 +242,7 @@ export async function exportTiersWorkbook(tiers, prestations, regulations, orgLa
   const names = new Map(tiers.map((t) => [t.id, t.data.name]));
   for (const p of prestations) {
     const d = p.data;
-    const row = { ...d, ...orgLabels(d), tiers: names.get(p.tiers_id), status: STATUS_BY_CODE[d.status]?.label || d.status };
+    const row = { ...d, ...orgLabels(d), tiers: p.tiersIds.map((t) => names.get(t)).filter(Boolean).join(', '), status: STATUS_BY_CODE[d.status]?.label || d.status };
     row.annualCost = d.annualCost ? Number(d.annualCost) : null;
     for (const q of regulations) {
       const v = d.qualifications?.[q.code];

@@ -46,7 +46,13 @@ au format du template EBA « Register of Information » (`template/dora-roi-temp
   téléphone : DG, DPO, RSSI…) et ses prestations (période, direction COMEX, responsable COMEX,
   responsable du tiers, coût, prochaine revue, qualifications et justifications) ; lien vers la fiche du
   registre DORA quand le tiers y figure.
-- **Prestations** : liste filtrable par qualification et par statut.
+- **Prestations** : liste filtrable par qualification et par statut, création d'une prestation avec son
+  tiers (existant ou nouveau).
+- **Tiers et prestations liés** : une prestation peut être fournie par plusieurs tiers. Depuis la fiche
+  d'un tiers, « Ajouter une prestation » crée une prestation ou sélectionne une prestation existante ;
+  depuis la fiche d'une prestation, « Associer un tiers » sélectionne un tiers existant ou en crée un.
+  Une prestation garde toujours au moins un tiers ; supprimer un tiers supprime les prestations qu'il est
+  seul à fournir.
 - **Export Excel** des tiers, prestations (une colonne par qualification, organisation interne) et
   contacts des tiers.
 - **Reprise du registre DORA** : chaque prestataire TIC (b_05.01) devient un tiers et chaque accord
@@ -55,6 +61,10 @@ au format du template EBA « Register of Information » (`template/dora-roi-temp
 ![Fiche tiers](docs/captures/fiche-tiers.png)
 
 ![Qualification d'une prestation](docs/captures/qualification-prestation.png)
+
+![Ajouter une prestation à un tiers](docs/captures/ajout-prestation.png)
+
+![Fiche d'une prestation et ses tiers](docs/captures/fiche-prestation.png)
 
 ## Profils
 
