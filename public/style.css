@@ -325,3 +325,15 @@ ul.plain li.row { display: flex; justify-content: space-between; gap: 8px; }
 }
 .fn-ids-table { max-height: 260px; overflow-y: auto; }
 .fn-ids-table tbody tr { cursor: default; }
+
+/* Organisation de la structure et contacts des tiers */
+table.data td.nowrap { white-space: nowrap; }
+table.data.contacts tbody tr, .org-table tbody tr { cursor: default; }
+.contacts-card .page-head { margin-bottom: 8px; }
+.contacts-card .page-head h2 { margin: 0; }
+.readonly-value { padding: 7px 0; font-weight: 600; }
+.contacts-editor table.data.edit td { padding: 4px; max-width: none; overflow: visible; }
+.contacts-editor table.data.edit tbody tr { cursor: default; }
+.contacts-editor table.data.edit tbody tr:hover { background: none; }
+.contacts-editor table.data.edit input { width: 100%; min-width: 90px; }
+.contacts-editor > .btn { margin-top: 8px; }

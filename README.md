@@ -15,13 +15,21 @@ Une même prestation peut être à la fois DORA et PECI, par exemple ; DORA, Ré
 permettent en plus de signaler la prestation comme critique (★).
 
 Ces cinq régulations sont créées au premier démarrage. L'administrateur global les gère dans
-**Administration › Régulations et organisation** pour adapter l'outil à d'autres types d'entreprises :
+**Administration › Régulations** pour adapter l'outil à d'autres types d'entreprises :
 ajout (par exemple Solvabilité II, RGPD ou NIS 2, proposés en suggestion), modification du libellé, de la
 description, de la case « critique » et de la couleur, ordre d'affichage, désactivation (les
 qualifications déjà saisies sont conservées) et suppression d'une régulation inutilisée. La régulation
-DORA, reliée au registre d'information, reste toujours active. Le nom de l'organisation s'affiche dans le menu.
+DORA, reliée au registre d'information, reste toujours active.
 
-![Régulations et organisation](docs/captures/regulations.png)
+![Régulations](docs/captures/regulations.png)
+
+**Administration › Organisation de la structure** décrit l'entreprise : son nom (affiché dans le menu),
+les **directions représentées au COMEX** avec le nom de leur responsable COMEX, et les **responsables
+de tiers** (nom, direction, e-mail, téléphone). Chaque prestation indique sa direction COMEX (le
+responsable COMEX en découle) et son responsable du tiers. Une direction ou un responsable encore utilisé
+ne peut pas être supprimé.
+
+![Organisation de la structure](docs/captures/organisation.png)
 
 L'application tient aussi le **registre d'information DORA** (article 28 du règlement (UE) 2022/2554)
 au format du template EBA « Register of Information » (`template/dora-roi-template.xlsb`) : les
@@ -34,10 +42,13 @@ au format du template EBA « Register of Information » (`template/dora-roi-temp
 - **Accueil** : prestations par qualification, revues à mener dans les 30 jours, échéances à 6 mois,
   cumuls de qualifications, tiers récemment mis à jour.
 - **Tiers** : fiches en cartes avec recherche, filtre par catégorie et par qualification.
-- **Fiche tiers** : informations du tiers et ses prestations (période, responsable, coût, prochaine
-  revue, qualifications et justifications) ; lien vers la fiche du registre DORA quand le tiers y figure.
+- **Fiche tiers** : informations du tiers, **contacts chez le tiers** (fonction, prénom, nom, e-mail,
+  téléphone : DG, DPO, RSSI…) et ses prestations (période, direction COMEX, responsable COMEX,
+  responsable du tiers, coût, prochaine revue, qualifications et justifications) ; lien vers la fiche du
+  registre DORA quand le tiers y figure.
 - **Prestations** : liste filtrable par qualification et par statut.
-- **Export Excel** des tiers et prestations (une colonne par qualification).
+- **Export Excel** des tiers, prestations (une colonne par qualification, organisation interne) et
+  contacts des tiers.
 - **Reprise du registre DORA** : chaque prestataire TIC (b_05.01) devient un tiers et chaque accord
   (b_02.02) une prestation qualifiée DORA, automatiquement après chaque import du registre.
 
@@ -167,6 +178,7 @@ server/checks.js                  contrôles de complétude et de cohérence
 server/xlsx.js                    export / import au format du template
 server/tiers.js                   tiers, prestations, reprise du registre DORA, export Excel des tiers
 server/regulations.js             régulations paramétrables et paramètres de l'organisation
+server/organisation.js            directions COMEX et responsables de tiers
 server/app.js                     API HTTP et fichiers statiques
 public/                           interface web (HTML/CSS/JS sans framework)
 public/shared/validate.js         règles de format partagées navigateur / serveur

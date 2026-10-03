@@ -1,8 +1,8 @@
 // Interface web du registre d'information DORA (application monopage, sans framework).
 import { checkValue, isEmpty } from './shared/validate.js';
-import { TIERS_CATEGORIES, ID_TYPES, PRESTATION_DOMAINS, STATUSES, STATUS_BY_CODE, REGULATION_CATALOG, REGULATION_COLORS } from './shared/tiers-model.js';
+import { TIERS_CATEGORIES, ID_TYPES, PRESTATION_DOMAINS, STATUSES, STATUS_BY_CODE, REGULATION_CATALOG, REGULATION_COLORS, CONTACT_ROLES, personName } from './shared/tiers-model.js';
 
-const state = { me: null, schema: null, tables: {}, issues: [], lists: {}, tiers: [], prestations: [], regulations: [], settings: {}, doraCode: 'DORA' };
+const state = { me: null, schema: null, tables: {}, issues: [], lists: {}, tiers: [], prestations: [], regulations: [], settings: {}, doraCode: 'DORA', org: { directions: [], managers: [] } };
 const $app = document.getElementById('app');
 const $modal = document.getElementById('modal-root');
 
@@ -117,13 +117,15 @@ async function loadAll() {
 }
 
 async function refresh() {
-  const [reg, checks, me, tiers, regulations] = await Promise.all([
+  const [reg, checks, me, tiers, regulations, org] = await Promise.all([
     api('/api/register'),
     api('/api/checks'),
     api('/api/me'),
     api('/api/tiers'),
     api('/api/regulations'),
+    api('/api/organisation'),
   ]);
+  state.org = org;
   state.regulations = regulations.regulations;
   state.settings = regulations.settings;
   state.doraCode = regulations.doraCode;
@@ -265,7 +267,7 @@ function shell(content) {
     admin.push(link('#/controles', 'Contrôles DORA', h('span', { class: `badge ${errs ? 'erreur' : 'ok'}` }, state.issues.length)));
     admin.push(link('#/echanges', 'Import / export'));
     if (me.permissions.manageUsers) {
-      admin.push(link('#/regulations', 'Régulations et organisation'), link('#/utilisateurs', 'Utilisateurs'), link('#/journal', "Journal d'audit"));
+      admin.push(link('#/organisation', 'Organisation de la structure'), link('#/regulations', 'Régulations'), link('#/utilisateurs', 'Utilisateurs'), link('#/journal', "Journal d'audit"));
     }
   }
   const subtitle = state.settings.orgName || regs().map((r) => r.label).join(' · ');
@@ -337,6 +339,7 @@ function route() {
   else if (page === 'utilisateurs' && state.me.permissions.manageUsers) view = usersView();
   else if (page === 'journal' && state.me.permissions.manageUsers) view = auditView();
   else if (page === 'regulations' && state.me.permissions.manageUsers) view = regulationsView();
+  else if (page === 'organisation' && state.me.permissions.manageUsers) view = organisationView();
   else view = h('div', { class: 'empty' }, 'Page introuvable.');
   shell(view);
   window.scrollTo(0, 0);
@@ -1764,6 +1767,13 @@ function tiersChips(t, small) {
 }
 
 const tiersById = (id) => state.tiers.find((t) => t.id === id);
+const directionBy = (id) => state.org.directions.find((d) => d.id === id);
+const managerBy = (id) => state.org.managers.find((m) => m.id === id);
+/** Organisation interne d'une prestation : direction COMEX, responsable COMEX, responsable du tiers. */
+function orgOf(p) {
+  const dir = directionBy(p.data.directionId);
+  return { direction: dir?.title || '', head: dir?.head || '', manager: personName(managerBy(p.data.managerId)) || p.data.owner || '' };
+}
 const euros = (v) => (isEmpty(v) || !Number(v) ? '—' : Number(v).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }));
 const reviewDue = (p) => p.data.status !== 'terminee' && p.data.nextReview && p.data.nextReview <= inDays(30);
 const endingSoon = (p) => p.data.status !== 'terminee' && p.data.end && p.data.end >= today() && p.data.end <= inDays(180);
@@ -1963,6 +1973,7 @@ function tiersPage(id) {
       h(
         'div',
         {},
+        contactsCard(t),
         h(
           'div',
           { class: 'page-head' },
@@ -1985,8 +1996,6 @@ function tiersPage(id) {
             item('Identifiant', d.identifier ? `${d.identifier}${d.idType ? ` (${d.idType})` : ''}` : ''),
             item('Pays', countryName(d.country)),
             item('Groupe', d.group),
-            item('Contact', d.contactName),
-            item('E-mail', d.contactEmail ? h('a', { href: `mailto:${d.contactEmail}` }, d.contactEmail) : ''),
             item('Coût annuel', t.cost ? euros(t.cost) : ''),
             item('Registre DORA', doraProvider ? 'Prestataire TIC déclaré' : d.doraCode ? `Code ${d.doraCode}` : 'Non déclaré'),
           ),
@@ -1994,6 +2003,33 @@ function tiersPage(id) {
         ),
       ),
     ),
+  );
+}
+
+function contactsCard(t) {
+  const list = t.data.contacts || [];
+  const link = (v, scheme) => (v ? h('a', { href: `${scheme}:${scheme === 'tel' ? v.replace(/[^0-9+]/g, '') : v}` }, v) : '—');
+  return h(
+    'div',
+    { class: 'card contacts-card' },
+    h(
+      'div',
+      { class: 'page-head' },
+      h('h2', {}, `Contacts chez le tiers (${list.length})`),
+      t.editable ? h('button', { class: 'btn small-btn', onclick: () => tiersModal(t, true) }, list.length ? 'Modifier les contacts' : '+ Ajouter des contacts') : null,
+    ),
+    list.length
+      ? h(
+          'div',
+          { class: 'table-wrap' },
+          h(
+            'table',
+            { class: 'data contacts' },
+            h('thead', {}, h('tr', {}, ['Fonction', 'Prénom', 'Nom', 'E-mail', 'Téléphone'].map((x) => h('th', {}, x)))),
+            h('tbody', {}, list.map((c) => h('tr', {}, h('td', {}, h('b', {}, c.role)), h('td', {}, c.firstName || '—'), h('td', {}, c.lastName || '—'), h('td', {}, link(c.email, 'mailto')), h('td', { class: 'nowrap' }, link(c.phone, 'tel'))))),
+          ),
+        )
+      : h('p', { class: 'muted small' }, 'Aucun contact renseigné (DG, DPO, RSSI, interlocuteur opérationnel…).'),
   );
 }
 
@@ -2017,7 +2053,9 @@ function prestationCard(p, editable) {
       'div',
       { class: 'facts' },
       fact('Période', d.start || d.end ? `${d.start ? frDate(d.start) : '…'} → ${d.end ? frDate(d.end) : 'sans échéance'}` : ''),
-      fact('Responsable', d.owner),
+      fact('Direction COMEX', orgOf(p).direction),
+      fact('Responsable COMEX', orgOf(p).head),
+      fact('Responsable du tiers', orgOf(p).manager),
       fact('Coût annuel', d.annualCost ? euros(d.annualCost) : ''),
       fact('Prochaine revue', d.nextReview ? h('span', { class: reviewDue(p) ? 'due' : '' }, frDate(d.nextReview)) : ''),
       fact('Contrat DORA', d.doraContract),
@@ -2066,7 +2104,7 @@ function prestationsList(qualArg) {
     const list = state.prestations
       .filter(
         (p) =>
-          (!q || `${p.data.title} ${names.get(p.tiers_id)} ${p.data.domain} ${p.data.entity} ${p.data.owner}`.toLowerCase().includes(q)) &&
+          (!q || `${p.data.title} ${names.get(p.tiers_id)} ${p.data.domain} ${p.data.entity} ${Object.values(orgOf(p)).join(' ')}`.toLowerCase().includes(q)) &&
           (prestaFilter.status === 'live' ? p.data.status !== 'terminee' : !prestaFilter.status || p.data.status === prestaFilter.status) &&
           (!qual.v || (qual.v === 'aucune' ? !qualifCodes(p).length : p.data.qualifications?.[qual.v])),
       )
@@ -2082,12 +2120,13 @@ function prestationsList(qualArg) {
           h('td', {}, h('b', {}, p.data.title), h('div', { class: 'muted small' }, [p.data.domain, p.data.entity].filter(Boolean).join(' · '))),
           h('td', {}, h('span', { class: 'tiers-cell' }, avatar(names.get(p.tiers_id) || '?'), names.get(p.tiers_id))),
           h('td', {}, h('div', { class: 'chips' }, prestaChips(p, true))),
+          h('td', {}, orgOf(p).manager || '—', h('div', { class: 'muted small' }, orgOf(p).direction)),
           h('td', {}, p.data.end ? frDate(p.data.end) : '—'),
           h('td', {}, h('span', { class: `badge ${st.cls}` }, st.label)),
         );
       }),
     );
-    if (!list.length) tbody.append(h('tr', {}, h('td', { colspan: 5, class: 'empty' }, 'Aucune prestation ne correspond à ces critères.')));
+    if (!list.length) tbody.append(h('tr', {}, h('td', { colspan: 6, class: 'empty' }, 'Aucune prestation ne correspond à ces critères.')));
   };
   search.addEventListener('input', () => ((prestaFilter.q = search.value), draw()));
   status.addEventListener('change', () => ((prestaFilter.status = status.value), draw()));
@@ -2102,7 +2141,7 @@ function prestationsList(qualArg) {
       h('a', { class: 'btn', href: '/api/tiers/export.xlsx' }, 'Exporter (.xlsx)'),
     ),
     h('div', { class: 'filters' }, h('div', { class: 'toolbar' }, search, status, info), chipsBox),
-    h('div', { class: 'table-wrap' }, h('table', { class: 'data' }, h('thead', {}, h('tr', {}, ['Prestation', 'Tiers', 'Qualifications', 'Fin', 'Statut'].map((x) => h('th', {}, x)))), tbody)),
+    h('div', { class: 'table-wrap' }, h('table', { class: 'data' }, h('thead', {}, h('tr', {}, ['Prestation', 'Tiers', 'Qualifications', 'Responsable', 'Fin', 'Statut'].map((x) => h('th', {}, x)))), tbody)),
   );
 }
 
@@ -2138,7 +2177,44 @@ function saveHandler(alert, fields, run) {
   };
 }
 
-function tiersModal(t) {
+/** Tableau éditable des contacts d'un tiers (fonction, prénom, nom, e-mail, téléphone). */
+function contactsEditor(initial) {
+  const rolesList = h('datalist', { id: 'dl-contact-roles' }, CONTACT_ROLES.map((r) => h('option', { value: r })));
+  const tbody = h('tbody');
+  const rows = [];
+  const addRow = (c = {}) => {
+    const inputs = {
+      role: h('input', { value: c.role || '', list: 'dl-contact-roles', placeholder: 'Ex. DG, DPO…', 'aria-label': 'Fonction' }),
+      firstName: h('input', { value: c.firstName || '', 'aria-label': 'Prénom' }),
+      lastName: h('input', { value: c.lastName || '', 'aria-label': 'Nom' }),
+      email: h('input', { type: 'email', value: c.email || '', 'aria-label': 'E-mail' }),
+      phone: h('input', { type: 'tel', value: c.phone || '', 'aria-label': 'Téléphone' }),
+    };
+    const row = { inputs };
+    row.tr = h(
+      'tr',
+      {},
+      Object.values(inputs).map((el) => h('td', {}, el)),
+      h('td', {}, h('button', { class: 'btn link', title: 'Retirer ce contact', 'aria-label': 'Retirer ce contact', onclick: () => (row.tr.remove(), rows.splice(rows.indexOf(row), 1)) }, '✕')),
+    );
+    rows.push(row);
+    tbody.append(row.tr);
+    return inputs;
+  };
+  (initial || []).forEach(addRow);
+  if (!rows.length) addRow();
+  const el = h(
+    'div',
+    { class: 'contacts-editor' },
+    rolesList,
+    h('div', { class: 'table-wrap' }, h('table', { class: 'data edit' }, h('thead', {}, h('tr', {}, ['Fonction', 'Prénom', 'Nom', 'E-mail', 'Téléphone', ''].map((x) => h('th', {}, x)))), tbody)),
+    h('button', { class: 'btn small-btn', onclick: () => addRow().role.focus() }, '+ Ajouter un contact'),
+  );
+  el.value = () => rows.map((r) => Object.fromEntries(Object.entries(r.inputs).map(([k, x]) => [k, x.value])));
+  return el;
+}
+
+function tiersModal(t, focusContacts) {
   const d = t?.data || {};
   const countries = [...(state.lists.LISTCOUNTRY?.keys() || [])].map((c) => c.replace('eba_GA:', '')).filter((c) => /^[A-Z]{2}$/.test(c));
   const inputs = {
@@ -2148,10 +2224,9 @@ function tiersModal(t) {
     identifier: h('input', { value: d.identifier || '', placeholder: 'SIREN, LEI, n° de TVA…' }),
     country: selectOf(countries.map((c) => [c, `${countryName(c)} (${c})`]).sort((a, b) => a[1].localeCompare(b[1], 'fr')), d.country || (t ? '' : 'FR')),
     group: h('input', { value: d.group || '', placeholder: 'Société mère ou groupe' }),
-    contactName: h('input', { value: d.contactName || '' }),
-    contactEmail: h('input', { type: 'email', value: d.contactEmail || '' }),
     notes: h('textarea', { rows: 3 }, d.notes || ''),
   };
+  const contacts = contactsEditor(d.contacts);
   const fields = {
     name: formField('Nom du tiers', inputs.name, { required: true, wide: true }),
     category: formField('Catégorie', inputs.category),
@@ -2159,9 +2234,8 @@ function tiersModal(t) {
     idType: formField('Type d’identifiant', inputs.idType),
     identifier: formField('Identifiant', inputs.identifier),
     group: formField('Groupe', inputs.group),
-    contactName: formField('Contact', inputs.contactName),
-    contactEmail: formField('E-mail du contact', inputs.contactEmail),
     notes: formField('Notes', inputs.notes, { wide: true }),
+    contacts: formField('Contacts chez le tiers', contacts, { wide: true, hint: 'Une ligne par fonction : DG, DPO, RSSI, interlocuteur opérationnel…' }),
   };
   const alert = h('div', { class: 'alert error', hidden: true });
   const close = openModal({
@@ -2175,6 +2249,7 @@ function tiersModal(t) {
           class: 'btn primary',
           onclick: saveHandler(alert, fields, async () => {
             const data = Object.fromEntries(Object.entries(inputs).map(([k, el]) => [k, el.value]));
+            data.contacts = contacts.value();
             const saved = t ? await api(`/api/tiers/${t.id}`, { method: 'PUT', body: { data } }) : await api('/api/tiers', { method: 'POST', body: { data } });
             close();
             toast(t ? 'Tiers enregistré' : 'Tiers créé');
@@ -2186,7 +2261,10 @@ function tiersModal(t) {
       ),
     ],
   });
+  if (focusContacts) fields.contacts.scrollIntoView({ block: 'start' });
 }
+
+const ORG_FIELDS = ['directionId', 'comexHead', 'managerId'];
 
 function prestationModal(tiersId, p) {
   const d = p?.data || {};
@@ -2198,7 +2276,12 @@ function prestationModal(tiersId, p) {
     title: h('input', { value: d.title || '', placeholder: 'Ex. Hébergement du site bancaire' }),
     domain: selectOf(PRESTATION_DOMAINS, d.domain),
     entity: h('input', { value: d.entity || '', list: 'dl-entities', placeholder: 'Entité qui bénéficie de la prestation' }),
-    owner: h('input', { value: d.owner || '', placeholder: 'Direction ou personne responsable' }),
+    directionId: selectOf(state.org.directions.map((x) => [String(x.id), x.title]), d.directionId ? String(d.directionId) : '', 'Choisir une direction…'),
+    managerId: selectOf(
+      state.org.managers.map((m) => [String(m.id), `${personName(m)}${directionBy(m.directionId) ? ` · ${directionBy(m.directionId).title}` : ''}`]),
+      d.managerId ? String(d.managerId) : '',
+      'Choisir un responsable…',
+    ),
     status: selectOf(STATUSES.map((s) => [s.code, s.label]), d.status || 'active'),
     start: h('input', { type: 'date', value: d.start || '' }),
     end: h('input', { type: 'date', value: d.end || '' }),
@@ -2211,7 +2294,9 @@ function prestationModal(tiersId, p) {
     title: formField('Intitulé', inputs.title, { required: true, wide: true }),
     domain: formField('Domaine', inputs.domain),
     entity: formField('Entité bénéficiaire', inputs.entity),
-    owner: formField('Responsable interne', inputs.owner),
+    directionId: formField('Direction COMEX', inputs.directionId),
+    comexHead: formField('Responsable COMEX', h('div', { class: 'readonly-value' })),
+    managerId: formField('Responsable du tiers', inputs.managerId, { hint: d.owner && !d.managerId ? `Saisie précédente : ${d.owner}` : null }),
     status: formField('Statut', inputs.status),
     start: formField('Début', inputs.start),
     end: formField('Fin', inputs.end, { hint: 'Laisser vide si sans échéance' }),
@@ -2219,6 +2304,21 @@ function prestationModal(tiersId, p) {
     nextReview: formField('Prochaine revue', inputs.nextReview),
     description: formField('Description', inputs.description, { wide: true }),
   };
+  // Le responsable COMEX découle de la direction ; choisir un responsable de tiers propose sa direction.
+  const headBox = fields.comexHead.querySelector('.readonly-value');
+  const syncHead = () => (headBox.textContent = directionBy(Number(inputs.directionId.value))?.head || '—');
+  inputs.directionId.addEventListener('change', syncHead);
+  inputs.managerId.addEventListener('change', () => {
+    const m = managerBy(Number(inputs.managerId.value));
+    if (m?.directionId && !inputs.directionId.value) {
+      inputs.directionId.value = String(m.directionId);
+      syncHead();
+    }
+  });
+  syncHead();
+  if (!state.org.directions.length && !state.org.managers.length) {
+    fields.directionId.querySelector('label').after(h('div', { class: 'meta' }, state.me.permissions.manageUsers ? h('a', { href: '#/organisation' }, 'Renseigner l’organisation de la structure') : 'Organisation de la structure non renseignée'));
+  }
   const doraContract = h('input', { value: d.doraContract || '', list: 'dl-contracts', placeholder: 'Référence de l’accord (b_02.01)' });
   const quals = {};
   const qCards = regs().map((q) => {
@@ -2251,7 +2351,9 @@ function prestationModal(tiersId, p) {
       alert,
       entityList,
       contractList,
-      h('div', { class: 'form-grid' }, Object.values(fields)),
+      h('div', { class: 'form-grid' }, Object.entries(fields).filter(([k]) => !ORG_FIELDS.includes(k)).map(([, f]) => f)),
+      h('h3', { class: 'form-title' }, 'Organisation interne'),
+      h('div', { class: 'form-grid' }, ORG_FIELDS.map((k) => fields[k])),
       h('h3', { class: 'form-title' }, 'Qualifications réglementaires'),
       h('p', { class: 'muted small' }, 'Cochez toutes les qualifications qui s’appliquent : une même prestation peut en cumuler plusieurs.'),
       h('div', { class: 'qcards' }, qCards),
@@ -2269,6 +2371,7 @@ function prestationModal(tiersId, p) {
               if (q.on.checked) data.qualifications[code] = { critical: !!q.critical?.checked, note: q.note.value };
             }
             data.doraContract = quals[state.doraCode]?.on.checked ? doraContract.value : '';
+            data.owner = d.owner || '';
             if (p) await api(`/api/prestations/${p.id}`, { method: 'PUT', body: { data } });
             else await api('/api/prestations', { method: 'POST', body: { tiersId, data } });
             close();
@@ -2285,20 +2388,19 @@ function prestationModal(tiersId, p) {
 // ---------------------------------------------------------------------------------------
 // Administration : régulations et organisation
 // ---------------------------------------------------------------------------------------
+async function runAndReload(fn, okMsg) {
+  try {
+    await fn();
+    if (okMsg) toast(okMsg);
+    await reloadAndRender();
+  } catch (e) {
+    if (!e.handled) toast(e.message);
+  }
+}
+
 function regulationsView() {
   const list = state.regulations;
-  const s = state.settings;
-  const orgName = h('input', { value: s.orgName || '', placeholder: 'Ex. Banque Exemple' });
-  const orgSector = h('input', { value: s.orgSector || '', placeholder: 'Ex. Banque, assurance, société de gestion…' });
-  const run = async (fn, okMsg) => {
-    try {
-      await fn();
-      if (okMsg) toast(okMsg);
-      await reloadAndRender();
-    } catch (e) {
-      if (!e.handled) toast(e.message);
-    }
-  };
+  const run = runAndReload;
   const row = (r, i) =>
     h(
       'div',
@@ -2349,16 +2451,8 @@ function regulationsView() {
     h(
       'div',
       { class: 'page-head' },
-      h('div', {}, h('h1', {}, 'Régulations et organisation'), h('div', { class: 'muted' }, 'Adaptez le registre des tiers à votre entreprise : les régulations listées ici sont les qualifications proposées pour chaque prestation.')),
+      h('div', {}, h('h1', {}, 'Régulations'), h('div', { class: 'muted' }, 'Adaptez le registre des tiers à votre entreprise : les régulations listées ici sont les qualifications proposées pour chaque prestation.')),
       h('button', { class: 'btn primary', onclick: () => regulationModal(null) }, '+ Nouvelle régulation'),
-    ),
-    h(
-      'div',
-      { class: 'card' },
-      h('h2', {}, 'Organisation'),
-      h('div', { class: 'form-grid' }, h('div', { class: 'field' }, h('label', {}, 'Nom de l’organisation'), orgName), h('div', { class: 'field' }, h('label', {}, 'Secteur'), orgSector)),
-      h('p', { class: 'muted small' }, 'Le nom de l’organisation s’affiche sous le titre, dans le menu.'),
-      h('button', { class: 'btn', onclick: () => run(() => api('/api/settings', { method: 'PUT', body: { data: { orgName: orgName.value, orgSector: orgSector.value } } }), 'Paramètres enregistrés') }, 'Enregistrer'),
     ),
     h(
       'div',
@@ -2439,6 +2533,161 @@ function regulationModal(r, preset) {
         r ? 'Enregistrer' : 'Ajouter',
       ),
     ],
+  });
+}
+
+// ---------------------------------------------------------------------------------------
+// Administration : organisation de la structure
+// ---------------------------------------------------------------------------------------
+function organisationView() {
+  const { directions, managers } = state.org;
+  const s = state.settings;
+  const orgName = h('input', { value: s.orgName || '', placeholder: 'Ex. Banque Exemple' });
+  const orgSector = h('input', { value: s.orgSector || '', placeholder: 'Ex. Banque, assurance, société de gestion…' });
+  const del = (label, path, usage) =>
+    h(
+      'button',
+      {
+        class: 'btn link small',
+        disabled: usage > 0,
+        title: usage ? 'Encore utilisé : modifiez d’abord les éléments rattachés' : '',
+        onclick: () => confirm(`Supprimer « ${label} » ?`) && runAndReload(() => api(path, { method: 'DELETE' }), 'Supprimé'),
+      },
+      'Supprimer',
+    );
+  const move = (d, i, dir) =>
+    h(
+      'button',
+      { class: 'btn link', title: dir < 0 ? 'Monter' : 'Descendre', disabled: dir < 0 ? i === 0 : i === directions.length - 1, onclick: () => runAndReload(() => api(`/api/organisation/directions/${d.id}/move`, { method: 'POST', body: { dir } })) },
+      dir < 0 ? '▲' : '▼',
+    );
+  const table = (head, rows, empty) =>
+    rows.length
+      ? h('div', { class: 'table-wrap' }, h('table', { class: 'data org-table' }, h('thead', {}, h('tr', {}, head.map((x) => h('th', {}, x)))), h('tbody', {}, rows)))
+      : h('p', { class: 'muted small' }, empty);
+  return h(
+    'div',
+    {},
+    h(
+      'div',
+      { class: 'page-head' },
+      h('div', {}, h('h1', {}, 'Organisation de la structure'), h('div', { class: 'muted' }, 'Directions représentées au COMEX et personnes responsables des tiers : elles sont proposées dans la description de chaque prestation.')),
+    ),
+    h(
+      'div',
+      { class: 'card' },
+      h('h2', {}, 'Entreprise'),
+      h('div', { class: 'form-grid' }, h('div', { class: 'field' }, h('label', {}, 'Nom de l’organisation'), orgName), h('div', { class: 'field' }, h('label', {}, 'Secteur'), orgSector)),
+      h('p', { class: 'muted small' }, 'Le nom de l’organisation s’affiche sous le titre, dans le menu.'),
+      h('button', { class: 'btn', onclick: () => runAndReload(() => api('/api/settings', { method: 'PUT', body: { data: { orgName: orgName.value, orgSector: orgSector.value } } }), 'Paramètres enregistrés') }, 'Enregistrer'),
+    ),
+    h(
+      'div',
+      { class: 'card' },
+      h('div', { class: 'page-head' }, h('h2', {}, `Directions COMEX (${directions.length})`), h('button', { class: 'btn primary', onclick: () => directionModal(null) }, '+ Nouvelle direction')),
+      table(
+        ['', 'Direction', 'Responsable COMEX', 'Responsables de tiers', 'Prestations', ''],
+        directions.map((d, i) =>
+          h(
+            'tr',
+            {},
+            h('td', { class: 'nowrap' }, move(d, i, -1), move(d, i, 1)),
+            h('td', {}, h('b', {}, d.title)),
+            h('td', {}, d.head),
+            h('td', {}, d.managers || '—'),
+            h('td', {}, d.usage ? h('a', { href: '#/prestations', onclick: () => (prestaFilter.q = d.title) }, d.usage) : '—'),
+            h('td', { class: 'nowrap' }, h('button', { class: 'btn small-btn', onclick: () => directionModal(d) }, 'Modifier'), ' ', del(d.title, `/api/organisation/directions/${d.id}`, d.usage + d.managers)),
+          ),
+        ),
+        'Aucune direction : ajoutez les directions représentées au COMEX (ex. Direction des Opérations, Sophie Bernard).',
+      ),
+    ),
+    h(
+      'div',
+      { class: 'card' },
+      h('div', { class: 'page-head' }, h('h2', {}, `Responsables de tiers (${managers.length})`), h('button', { class: 'btn primary', onclick: () => managerModal(null) }, '+ Nouveau responsable')),
+      table(
+        ['Nom', 'Direction', 'E-mail', 'Téléphone', 'Prestations', ''],
+        managers.map((m) =>
+          h(
+            'tr',
+            {},
+            h('td', {}, h('b', {}, personName(m))),
+            h('td', {}, directionBy(m.directionId)?.title || '—'),
+            h('td', {}, m.email ? h('a', { href: `mailto:${m.email}` }, m.email) : '—'),
+            h('td', { class: 'nowrap' }, m.phone || '—'),
+            h('td', {}, m.usage || '—'),
+            h('td', { class: 'nowrap' }, h('button', { class: 'btn small-btn', onclick: () => managerModal(m) }, 'Modifier'), ' ', del(personName(m), `/api/organisation/managers/${m.id}`, m.usage)),
+          ),
+        ),
+        'Aucun responsable de tiers : ajoutez les personnes qui suivent les tiers au quotidien.',
+      ),
+    ),
+  );
+}
+
+function orgModal({ title, inputs, fields, path, method, okMsg }) {
+  const alert = h('div', { class: 'alert error', hidden: true });
+  const close = openModal({
+    title,
+    narrow: true,
+    body: [alert, h('div', { class: 'form-grid' }, Object.values(fields))],
+    footer: [
+      h('button', { class: 'btn', onclick: () => close() }, 'Annuler'),
+      h(
+        'button',
+        {
+          class: 'btn primary',
+          onclick: saveHandler(alert, fields, async () => {
+            const data = Object.fromEntries(Object.entries(inputs).map(([k, el]) => [k, el.value]));
+            await api(path, { method, body: { data } });
+            close();
+            toast(okMsg);
+            await reloadAndRender();
+          }),
+        },
+        'Enregistrer',
+      ),
+    ],
+  });
+}
+
+function directionModal(d) {
+  const inputs = {
+    title: h('input', { value: d?.title || '', placeholder: 'Ex. Direction des Opérations' }),
+    head: h('input', { value: d?.head || '', placeholder: 'Prénom et nom du membre du COMEX' }),
+  };
+  orgModal({
+    title: d ? 'Modifier la direction' : 'Nouvelle direction COMEX',
+    inputs,
+    fields: { title: formField('Titre de la direction', inputs.title, { required: true, wide: true }), head: formField('Responsable COMEX', inputs.head, { required: true, wide: true }) },
+    path: d ? `/api/organisation/directions/${d.id}` : '/api/organisation/directions',
+    method: d ? 'PUT' : 'POST',
+    okMsg: 'Direction enregistrée',
+  });
+}
+
+function managerModal(m) {
+  const inputs = {
+    firstName: h('input', { value: m?.firstName || '' }),
+    lastName: h('input', { value: m?.lastName || '' }),
+    directionId: selectOf(state.org.directions.map((x) => [String(x.id), x.title]), m?.directionId ? String(m.directionId) : ''),
+    email: h('input', { type: 'email', value: m?.email || '' }),
+    phone: h('input', { type: 'tel', value: m?.phone || '' }),
+  };
+  orgModal({
+    title: m ? 'Modifier le responsable' : 'Nouveau responsable de tiers',
+    inputs,
+    fields: {
+      firstName: formField('Prénom', inputs.firstName),
+      lastName: formField('Nom', inputs.lastName, { required: true }),
+      directionId: formField('Direction', inputs.directionId, { wide: true }),
+      email: formField('E-mail', inputs.email),
+      phone: formField('Téléphone', inputs.phone),
+    },
+    path: m ? `/api/organisation/managers/${m.id}` : '/api/organisation/managers',
+    method: m ? 'PUT' : 'POST',
+    okMsg: 'Responsable enregistré',
   });
 }
 

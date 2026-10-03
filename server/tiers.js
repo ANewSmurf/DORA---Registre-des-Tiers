@@ -112,8 +112,7 @@ export function syncFromDora(db, user) {
         identifier: code,
         country,
         group: p['b_05.01.0080'] || '',
-        contactName: '',
-        contactEmail: '',
+        contacts: [],
         notes: '',
         doraCode: code,
       },
@@ -151,6 +150,8 @@ export function syncFromDora(db, user) {
         description: '',
         domain: 'Informatique et données',
         entity: uniq(g.rows.map((d) => entities.get(d['b_02.02.0020']) || d['b_02.02.0020'])).join(', '),
+        directionId: null,
+        managerId: null,
         owner: '',
         status: end && end < today ? 'terminee' : 'active',
         start: starts[0] || '',
@@ -173,7 +174,7 @@ export function syncFromDora(db, user) {
 }
 
 /** Classeur Excel des tiers et prestations (une colonne Oui/Non par qualification). */
-export async function exportTiersWorkbook(tiers, prestations, regulations) {
+export async function exportTiersWorkbook(tiers, prestations, regulations, orgLabels = () => ({})) {
   const wb = new ExcelJS.Workbook();
   wb.creator = 'Registre des tiers';
   const head = (ws, cols) => {
@@ -189,8 +190,7 @@ export async function exportTiersWorkbook(tiers, prestations, regulations) {
     ['Identifiant', 'identifier', 24],
     ['Pays', 'country', 8],
     ['Groupe', 'group', 24],
-    ['Contact', 'contactName', 22],
-    ['E-mail', 'contactEmail', 28],
+    ['Contacts', 'contactCount', 10],
     ['Prestations', 'count', 12],
     ...regulations.map((q) => [q.label, q.code, 12]),
     ['Notes', 'notes', 40],
@@ -199,7 +199,7 @@ export async function exportTiersWorkbook(tiers, prestations, regulations) {
   for (const p of prestations) (byTiers.get(p.tiers_id) || byTiers.set(p.tiers_id, []).get(p.tiers_id)).push(p);
   for (const t of tiers) {
     const own = byTiers.get(t.id) || [];
-    const row = { ...t.data, count: own.length };
+    const row = { ...t.data, count: own.length, contactCount: (t.data.contacts || []).length };
     for (const q of regulations) row[q.code] = own.some((p) => p.data.qualifications?.[q.code]) ? 'Oui' : 'Non';
     wsT.addRow(row);
   }
@@ -209,7 +209,9 @@ export async function exportTiersWorkbook(tiers, prestations, regulations) {
     ['Prestation', 'title', 40],
     ['Domaine', 'domain', 22],
     ['Entité bénéficiaire', 'entity', 26],
-    ['Responsable', 'owner', 22],
+    ['Direction COMEX', 'direction', 28],
+    ['Responsable COMEX', 'comexHead', 22],
+    ['Responsable du tiers', 'manager', 22],
     ['Statut', 'status', 12],
     ['Début', 'start', 12],
     ['Fin', 'end', 12],
@@ -222,7 +224,7 @@ export async function exportTiersWorkbook(tiers, prestations, regulations) {
   const names = new Map(tiers.map((t) => [t.id, t.data.name]));
   for (const p of prestations) {
     const d = p.data;
-    const row = { ...d, tiers: names.get(p.tiers_id), status: STATUS_BY_CODE[d.status]?.label || d.status };
+    const row = { ...d, ...orgLabels(d), tiers: names.get(p.tiers_id), status: STATUS_BY_CODE[d.status]?.label || d.status };
     row.annualCost = d.annualCost ? Number(d.annualCost) : null;
     for (const q of regulations) {
       const v = d.qualifications?.[q.code];
@@ -231,5 +233,15 @@ export async function exportTiersWorkbook(tiers, prestations, regulations) {
     }
     wsP.addRow(row);
   }
+  const wsC = wb.addWorksheet('Contacts des tiers');
+  head(wsC, [
+    ['Tiers', 'tiers', 32],
+    ['Fonction', 'role', 30],
+    ['Prénom', 'firstName', 16],
+    ['Nom', 'lastName', 20],
+    ['E-mail', 'email', 30],
+    ['Téléphone', 'phone', 18],
+  ]);
+  for (const t of tiers) for (const c of t.data.contacts || []) wsC.addRow({ ...c, tiers: t.data.name });
   return wb.xlsx.writeBuffer();
 }
