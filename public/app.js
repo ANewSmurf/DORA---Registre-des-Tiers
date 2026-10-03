@@ -1,8 +1,8 @@
 // Interface web du registre d'information DORA (application monopage, sans framework).
 import { checkValue, isEmpty } from './shared/validate.js';
-import { QUALIFICATIONS, QUALIF_BY_CODE, TIERS_CATEGORIES, ID_TYPES, PRESTATION_DOMAINS, STATUSES, STATUS_BY_CODE } from './shared/tiers-model.js';
+import { TIERS_CATEGORIES, ID_TYPES, PRESTATION_DOMAINS, STATUSES, STATUS_BY_CODE, REGULATION_CATALOG, REGULATION_COLORS } from './shared/tiers-model.js';
 
-const state = { me: null, schema: null, tables: {}, issues: [], lists: {}, tiers: [], prestations: [] };
+const state = { me: null, schema: null, tables: {}, issues: [], lists: {}, tiers: [], prestations: [], regulations: [], settings: {}, doraCode: 'DORA' };
 const $app = document.getElementById('app');
 const $modal = document.getElementById('modal-root');
 
@@ -117,7 +117,16 @@ async function loadAll() {
 }
 
 async function refresh() {
-  const [reg, checks, me, tiers] = await Promise.all([api('/api/register'), api('/api/checks'), api('/api/me'), api('/api/tiers')]);
+  const [reg, checks, me, tiers, regulations] = await Promise.all([
+    api('/api/register'),
+    api('/api/checks'),
+    api('/api/me'),
+    api('/api/tiers'),
+    api('/api/regulations'),
+  ]);
+  state.regulations = regulations.regulations;
+  state.settings = regulations.settings;
+  state.doraCode = regulations.doraCode;
   state.tables = reg.tables;
   state.tiers = tiers.tiers;
   state.prestations = tiers.prestations;
@@ -160,7 +169,7 @@ function renderLogin(message) {
       h(
         'div',
         { class: 'card' },
-        h('div', { class: 'brand' }, h('img', { src: '/favicon.svg', alt: '' }), h('div', {}, 'Registre des tiers', h('small', {}, 'DORA · PECI · PBE · Résolution · ABE'))),
+        h('div', { class: 'brand' }, h('img', { src: '/favicon.svg', alt: '' }), h('div', {}, 'Registre des tiers', h('small', {}, 'Gestion des tiers et de leurs prestations'))),
         form,
       ),
     ),
@@ -196,25 +205,21 @@ function toggleMenu() {
   }
 }
 
-// Sections du menu latéral, repliées par défaut ; l'état ouvert/fermé est conservé pendant la session.
+// Sections du menu latéral, repliées par défaut (y compris « Registre d'information DORA » et
+// « Administration ») ; l'état ouvert/fermé est conservé pendant la session.
 const NAV_SECTIONS = [
   { key: 'Tiers', label: 'Prestataires TIC' },
   { key: 'Contrats', label: 'Contrats' },
   { key: 'Signataire', label: 'Signataire' },
   { key: 'Entités', label: 'Entités' },
   { key: 'Fonctions', label: 'Fonctions' },
-  { key: 'Administration', label: 'Administration' },
 ];
 const openSections = new Set();
 
-function navSection(sec, items) {
-  const hasActive = items.some((a) => a.classList.contains('active'));
-  const details = h(
-    'details',
-    { class: 'nav-group', open: openSections.has(sec.key) || hasActive },
-    h('summary', {}, h('span', {}, sec.label), hasActive ? null : h('span', { class: 'code' }, items.length)),
-    items,
-  );
+function navSection(sec, items, cls = '') {
+  const nodes = items.flat(Infinity).filter(Boolean);
+  const hasActive = nodes.some((a) => a.classList?.contains('active') || a.querySelector?.('a.active'));
+  const details = h('details', { class: `nav-group ${cls}`, open: openSections.has(sec.key) || hasActive }, h('summary', {}, h('span', {}, sec.label)), nodes);
   details.addEventListener('toggle', () => (details.open ? openSections.add(sec.key) : openSections.delete(sec.key)));
   return details;
 }
@@ -243,7 +248,7 @@ function shell(content) {
     dora = [
       link('#/dora', 'Tableau de bord DORA'),
       isReader() ? h('button', { class: 'btn link small nav-toggle', onclick: () => setDetailView(false) }, '← Vue simplifiée du registre') : null,
-      NAV_SECTIONS.filter((sec) => sec.key !== 'Administration').map((sec) => {
+      NAV_SECTIONS.map((sec) => {
         const items = [];
         if (sec.key === 'Tiers') items.push(link('#/dora/prestataires', 'Fiches prestataires', h('span', { class: 'badge' }, (state.tables['b_05.01'] || []).length)));
         for (const t of state.schema.tables.filter((x) => x.group === sec.key)) {
@@ -259,21 +264,23 @@ function shell(content) {
     const errs = state.issues.some((i) => i.level === 'erreur');
     admin.push(link('#/controles', 'Contrôles DORA', h('span', { class: `badge ${errs ? 'erreur' : 'ok'}` }, state.issues.length)));
     admin.push(link('#/echanges', 'Import / export'));
-    if (me.permissions.manageUsers) admin.push(link('#/utilisateurs', 'Utilisateurs'), link('#/journal', "Journal d'audit"));
+    if (me.permissions.manageUsers) {
+      admin.push(link('#/regulations', 'Régulations et organisation'), link('#/utilisateurs', 'Utilisateurs'), link('#/journal', "Journal d'audit"));
+    }
   }
+  const subtitle = state.settings.orgName || regs().map((r) => r.label).join(' · ');
   const sidebar = h(
     'nav',
     { class: 'sidebar', id: 'sidebar' },
-    h('div', { class: 'brand' }, h('img', { src: '/favicon.svg', alt: '' }), h('div', {}, 'Registre des tiers', h('small', {}, 'DORA · PECI · PBE · Résolution · ABE'))),
+    h('div', { class: 'brand' }, h('img', { src: '/favicon.svg', alt: '' }), h('div', {}, 'Registre des tiers', h('small', {}, subtitle))),
     h(
       'div',
       { class: 'nav' },
       link('#/', 'Accueil'),
       link('#/tiers', 'Tiers', count(state.tiers.length)),
       link('#/prestations', 'Prestations', count(state.prestations.length)),
-      h('div', { class: 'nav-section' }, 'Registre d’information DORA'),
-      dora,
-      admin.length ? [h('div', { class: 'nav-section' }, 'Administration'), admin] : null,
+      navSection({ key: 'DORA', label: 'Registre d’information DORA' }, dora, 'nav-top'),
+      admin.length ? navSection({ key: 'Administration', label: 'Administration' }, admin, 'nav-top') : null,
     ),
   );
   const topbar = h(
@@ -329,6 +336,7 @@ function route() {
   else if (page === 'controles') view = checksView();
   else if (page === 'utilisateurs' && state.me.permissions.manageUsers) view = usersView();
   else if (page === 'journal' && state.me.permissions.manageUsers) view = auditView();
+  else if (page === 'regulations' && state.me.permissions.manageUsers) view = regulationsView();
   else view = h('div', { class: 'empty' }, 'Page introuvable.');
   shell(view);
   window.scrollTo(0, 0);
@@ -1699,10 +1707,14 @@ function countryName(cc) {
 
 /** Pastille d'une qualification ; ★ quand la prestation est marquée critique pour cette qualification. */
 function qChip(code, critical, opts = {}) {
-  const q = QUALIF_BY_CODE[code];
+  const q = regBy(code);
+  if (!q) return null;
   return h('span', { class: `qchip q-${q.color}${opts.small ? ' small' : ''}`, title: critical && q.criticalLabel ? `${q.name} – ${q.criticalLabel}` : q.name }, critical ? '★ ' : '', q.label);
 }
-const qualifCodes = (p) => QUALIFICATIONS.map((q) => q.code).filter((c) => p.data.qualifications?.[c]);
+/** Régulations actives, dans l'ordre choisi par l'administrateur. */
+const regs = () => state.regulations.filter((r) => r.active);
+const regBy = (code) => state.regulations.find((r) => r.code === code);
+const qualifCodes = (p) => regs().map((q) => q.code).filter((c) => p.data.qualifications?.[c]);
 const isCritical = (p) => !!p.data.qualifications?.PECI || Object.values(p.data.qualifications || {}).some((v) => v.critical);
 function prestaChips(p, small) {
   const codes = qualifCodes(p);
@@ -1726,7 +1738,7 @@ function tiersModels() {
 }
 function tiersChips(t, small) {
   return t.quals.size
-    ? QUALIFICATIONS.filter((q) => t.quals.has(q.code)).map((q) => qChip(q.code, t.quals.get(q.code), { small }))
+    ? regs().filter((q) => t.quals.has(q.code)).map((q) => qChip(q.code, t.quals.get(q.code), { small }))
     : h('span', { class: 'qchip q-none' + (small ? ' small' : '') }, t.prestations.length ? 'Non qualifié' : 'Aucune prestation');
 }
 
@@ -1746,7 +1758,7 @@ function homeView() {
   for (const p of live) {
     const codes = qualifCodes(p);
     if (codes.length > 1) {
-      const key = codes.map((c) => QUALIF_BY_CODE[c].label).join(' + ');
+      const key = codes.map((c) => regBy(c).label).join(' + ');
       combos.set(key, (combos.get(key) || 0) + 1);
     }
   }
@@ -1788,7 +1800,7 @@ function homeView() {
       h('div', { class: 'hero-actions' }, search, state.me.permissions.createTiers ? h('button', { class: 'btn primary', onclick: () => tiersModal(null) }, '+ Nouveau tiers') : null),
     ),
     h('h2', { class: 'section-title' }, 'Prestations par qualification'),
-    h('div', { class: 'qtiles' }, QUALIFICATIONS.map(qTile), h('a', { class: 'qtile q-none', href: '#/prestations/aucune' }, h('div', { class: 'qtile-head' }, h('span', { class: 'qtile-label' }, 'À qualifier'), h('span', { class: 'qtile-n' }, unqualified.length)), h('div', { class: 'qtile-name' }, 'Prestations sans qualification'), h('div', { class: 'muted small' }, 'à examiner'))),
+    h('div', { class: 'qtiles' }, regs().map(qTile), h('a', { class: 'qtile q-none', href: '#/prestations/aucune' }, h('div', { class: 'qtile-head' }, h('span', { class: 'qtile-label' }, 'À qualifier'), h('span', { class: 'qtile-n' }, unqualified.length)), h('div', { class: 'qtile-name' }, 'Prestations sans qualification'), h('div', { class: 'muted small' }, 'à examiner'))),
     h(
       'div',
       { class: 'grid three', style: 'margin-top:16px' },
@@ -1830,7 +1842,7 @@ const tiersFilter = { q: '', qual: '', category: '' };
 function filterChips(current, onPick, withNone) {
   const chip = (code, label, color) =>
     h('button', { class: `fchip${color ? ` q-${color}` : ''}${current() === code ? ' on' : ''}`, onclick: () => onPick(code) }, label);
-  return h('div', { class: 'fchips' }, chip('', 'Toutes'), QUALIFICATIONS.map((q) => chip(q.code, q.label, q.color)), withNone ? chip('aucune', 'Sans qualification', 'none') : null);
+  return h('div', { class: 'fchips' }, chip('', 'Toutes'), regs().map((q) => chip(q.code, q.label, q.color)), withNone ? chip('aucune', 'Sans qualification', 'none') : null);
 }
 
 function tiersList() {
@@ -1967,7 +1979,7 @@ function tiersPage(id) {
 function prestationCard(p, editable) {
   const d = p.data;
   const st = STATUS_BY_CODE[d.status] || STATUS_BY_CODE.active;
-  const notes = qualifCodes(p).filter((c) => d.qualifications[c].note).map((c) => h('div', { class: 'small' }, h('b', {}, `${QUALIF_BY_CODE[c].label} : `), d.qualifications[c].note));
+  const notes = qualifCodes(p).filter((c) => d.qualifications[c].note).map((c) => h('div', { class: 'small' }, h('b', {}, `${regBy(c).label} : `), d.qualifications[c].note));
   const fact = (label, value) => (value ? h('div', { class: 'fact' }, h('span', { class: 'muted small' }, label), h('span', {}, value)) : null);
   return h(
     'div',
@@ -2065,7 +2077,7 @@ function prestationsList(qualArg) {
     h(
       'div',
       { class: 'page-head' },
-      h('div', {}, h('h1', {}, 'Prestations'), h('div', { class: 'muted' }, 'Chaque prestation porte ses qualifications : DORA, PECI, PBE, Résolution, Externalisation ABE.')),
+      h('div', {}, h('h1', {}, 'Prestations'), h('div', { class: 'muted' }, `Chaque prestation porte ses qualifications : ${regs().map((r) => r.label).join(', ')}.`)),
       h('a', { class: 'btn', href: '/api/tiers/export.xlsx' }, 'Exporter (.xlsx)'),
     ),
     h('div', { class: 'filters' }, h('div', { class: 'toolbar' }, search, status, info), chipsBox),
@@ -2188,7 +2200,7 @@ function prestationModal(tiersId, p) {
   };
   const doraContract = h('input', { value: d.doraContract || '', list: 'dl-contracts', placeholder: 'Référence de l’accord (b_02.01)' });
   const quals = {};
-  const qCards = QUALIFICATIONS.map((q) => {
+  const qCards = regs().map((q) => {
     const cur = d.qualifications?.[q.code];
     const on = h('input', { type: 'checkbox', checked: !!cur });
     const critical = q.criticalLabel ? h('input', { type: 'checkbox', checked: !!cur?.critical }) : null;
@@ -2197,7 +2209,7 @@ function prestationModal(tiersId, p) {
       'div',
       { class: 'qcard-details' },
       critical ? h('label', { class: 'small' }, critical, ' ', q.criticalLabel) : null,
-      q.code === 'DORA' ? h('div', { class: 'field' }, h('label', { class: 'small' }, 'Contrat du registre DORA'), doraContract) : null,
+      q.code === state.doraCode ? h('div', { class: 'field' }, h('label', { class: 'small' }, 'Contrat du registre DORA'), doraContract) : null,
       note,
     );
     const card = h('div', { class: `qcard q-${q.color}` }, h('label', { class: 'qcard-head' }, on, h('div', {}, h('b', {}, q.name), h('div', { class: 'muted small' }, q.desc))), details);
@@ -2235,7 +2247,7 @@ function prestationModal(tiersId, p) {
             for (const [code, q] of Object.entries(quals)) {
               if (q.on.checked) data.qualifications[code] = { critical: !!q.critical?.checked, note: q.note.value };
             }
-            data.doraContract = quals.DORA.on.checked ? doraContract.value : '';
+            data.doraContract = quals[state.doraCode]?.on.checked ? doraContract.value : '';
             if (p) await api(`/api/prestations/${p.id}`, { method: 'PUT', body: { data } });
             else await api('/api/prestations', { method: 'POST', body: { tiersId, data } });
             close();
@@ -2244,6 +2256,166 @@ function prestationModal(tiersId, p) {
           }),
         },
         p ? 'Enregistrer' : 'Ajouter la prestation',
+      ),
+    ],
+  });
+}
+
+// ---------------------------------------------------------------------------------------
+// Administration : régulations et organisation
+// ---------------------------------------------------------------------------------------
+function regulationsView() {
+  const list = state.regulations;
+  const s = state.settings;
+  const orgName = h('input', { value: s.orgName || '', placeholder: 'Ex. Banque Exemple' });
+  const orgSector = h('input', { value: s.orgSector || '', placeholder: 'Ex. Banque, assurance, société de gestion…' });
+  const run = async (fn, okMsg) => {
+    try {
+      await fn();
+      if (okMsg) toast(okMsg);
+      await reloadAndRender();
+    } catch (e) {
+      if (!e.handled) toast(e.message);
+    }
+  };
+  const row = (r, i) =>
+    h(
+      'div',
+      { class: `reg-row${r.active ? '' : ' off'}` },
+      h('div', { class: 'reg-order' }, h('button', { class: 'btn link', title: 'Monter', disabled: i === 0, onclick: () => run(() => api(`/api/regulations/${r.code}/move`, { method: 'POST', body: { dir: -1 } })) }, '▲'), h('button', { class: 'btn link', title: 'Descendre', disabled: i === list.length - 1, onclick: () => run(() => api(`/api/regulations/${r.code}/move`, { method: 'POST', body: { dir: 1 } })) }, '▼')),
+      h('span', { class: `qchip q-${r.color}` }, r.label),
+      h(
+        'div',
+        { class: 'reg-body' },
+        h('b', {}, r.name),
+        h('div', { class: 'muted small' }, r.desc || '—'),
+        h('div', { class: 'small' }, r.criticalLabel ? `★ Critique : ${r.criticalLabel}` : h('span', { class: 'muted' }, 'Pas de notion de criticité'), r.code === state.doraCode ? h('span', { class: 'muted' }, ' · reliée au registre d’information DORA') : null),
+      ),
+      h('div', { class: 'reg-usage muted small' }, plural(r.usage, 'prestation', 'prestations')),
+      h(
+        'div',
+        { class: 'reg-actions' },
+        h(
+          'label',
+          { class: 'switch small', title: r.code === state.doraCode ? 'La régulation DORA reste toujours active' : '' },
+          h('input', {
+            type: 'checkbox',
+            checked: r.active,
+            disabled: r.code === state.doraCode,
+            onchange: (e) => run(() => api(`/api/regulations/${r.code}`, { method: 'PUT', body: { data: r, active: e.target.checked } }), e.target.checked ? 'Régulation activée' : 'Régulation désactivée'),
+          }),
+          ' Active',
+        ),
+        h('button', { class: 'btn small-btn', onclick: () => regulationModal(r) }, 'Modifier'),
+        r.code !== state.doraCode
+          ? h(
+              'button',
+              {
+                class: 'btn link small',
+                title: r.usage ? 'Utilisée par des prestations : désactivez-la plutôt' : '',
+                disabled: r.usage > 0,
+                onclick: () => confirm(`Supprimer la régulation « ${r.label} » ?`) && run(() => api(`/api/regulations/${r.code}`, { method: 'DELETE' }), 'Régulation supprimée'),
+              },
+              'Supprimer',
+            )
+          : null,
+      ),
+    );
+  const missing = REGULATION_CATALOG.filter((c) => !list.some((r) => r.code === c.code));
+  return h(
+    'div',
+    {},
+    h(
+      'div',
+      { class: 'page-head' },
+      h('div', {}, h('h1', {}, 'Régulations et organisation'), h('div', { class: 'muted' }, 'Adaptez le registre des tiers à votre entreprise : les régulations listées ici sont les qualifications proposées pour chaque prestation.')),
+      h('button', { class: 'btn primary', onclick: () => regulationModal(null) }, '+ Nouvelle régulation'),
+    ),
+    h(
+      'div',
+      { class: 'card' },
+      h('h2', {}, 'Organisation'),
+      h('div', { class: 'form-grid' }, h('div', { class: 'field' }, h('label', {}, 'Nom de l’organisation'), orgName), h('div', { class: 'field' }, h('label', {}, 'Secteur'), orgSector)),
+      h('p', { class: 'muted small' }, 'Le nom de l’organisation s’affiche sous le titre, dans le menu.'),
+      h('button', { class: 'btn', onclick: () => run(() => api('/api/settings', { method: 'PUT', body: { data: { orgName: orgName.value, orgSector: orgSector.value } } }), 'Paramètres enregistrés') }, 'Enregistrer'),
+    ),
+    h(
+      'div',
+      { class: 'card' },
+      h('h2', {}, `Régulations (${list.length})`),
+      h('p', { class: 'muted small' }, 'L’ordre est celui des tuiles de l’accueil et des filtres. Une régulation désactivée disparaît des écrans et des formulaires ; les qualifications déjà saisies sont conservées.'),
+      h('div', { class: 'reg-list' }, list.map(row)),
+    ),
+    missing.length
+      ? h(
+          'div',
+          { class: 'card' },
+          h('h2', {}, 'Régulations suggérées pour d’autres secteurs'),
+          h(
+            'div',
+            { class: 'reg-list' },
+            missing.map((c) =>
+              h(
+                'div',
+                { class: 'reg-row' },
+                h('span', { class: `qchip q-${c.color}` }, c.label),
+                h('div', { class: 'reg-body' }, h('b', {}, c.name), h('div', { class: 'muted small' }, c.desc)),
+                h('div', { class: 'reg-actions' }, h('button', { class: 'btn small-btn', onclick: () => regulationModal(null, c) }, 'Ajouter…')),
+              ),
+            ),
+          ),
+        )
+      : null,
+  );
+}
+
+function regulationModal(r, preset) {
+  const d = r || preset || {};
+  const inputs = {
+    code: h('input', { value: d.code || '', disabled: !!r, placeholder: 'Ex. PECI' }),
+    label: h('input', { value: d.label || '', placeholder: 'Affiché sur les pastilles' }),
+    name: h('input', { value: d.name || '' }),
+    desc: h('textarea', { rows: 3 }, d.desc || ''),
+    criticalLabel: h('input', { value: d.criticalLabel || '', placeholder: 'Laisser vide si la régulation n’a pas de notion de criticité' }),
+    color: selectOf(REGULATION_COLORS, d.color || 'blue', 'Couleur'),
+  };
+  inputs.color.querySelector('option[value=""]')?.remove();
+  const preview = h('span', { class: 'qchip' });
+  const syncPreview = () => {
+    preview.className = `qchip q-${inputs.color.value}`;
+    preview.textContent = inputs.label.value || 'Aperçu';
+  };
+  inputs.color.addEventListener('change', syncPreview);
+  inputs.label.addEventListener('input', syncPreview);
+  syncPreview();
+  const fields = {
+    code: formField('Code', inputs.code, { required: true, hint: 'Identifiant technique, non modifiable ensuite' }),
+    label: formField('Libellé court', inputs.label, { required: true }),
+    name: formField('Nom', inputs.name, { required: true, wide: true }),
+    desc: formField('Description', inputs.desc, { wide: true, hint: 'Aide affichée lors de la qualification d’une prestation' }),
+    criticalLabel: formField('Case « critique »', inputs.criticalLabel, { wide: true }),
+    color: formField('Couleur', h('div', { class: 'toolbar' }, inputs.color, preview)),
+  };
+  const alert = h('div', { class: 'alert error', hidden: true });
+  const close = openModal({
+    title: r ? `Modifier ${r.label}` : 'Nouvelle régulation',
+    body: [alert, h('div', { class: 'form-grid' }, Object.values(fields))],
+    footer: [
+      h('button', { class: 'btn', onclick: () => close() }, 'Annuler'),
+      h(
+        'button',
+        {
+          class: 'btn primary',
+          onclick: saveHandler(alert, fields, async () => {
+            const data = Object.fromEntries(Object.entries(inputs).map(([k, el]) => [k, el.value]));
+            if (r) await api(`/api/regulations/${r.code}`, { method: 'PUT', body: { data } });
+            else await api('/api/regulations', { method: 'POST', body: { data } });
+            close();
+            toast('Régulation enregistrée');
+            await reloadAndRender();
+          }),
+        },
+        r ? 'Enregistrer' : 'Ajouter',
       ),
     ],
   });

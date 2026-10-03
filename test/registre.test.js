@@ -194,6 +194,43 @@ test('tiers et prestations : qualifications cumulables et périmètre', async ()
   assert.equal(wb.getWorksheet('Prestations').rowCount, (await admin('/api/tiers')).body.prestations.length + 1);
 });
 
+test('régulations paramétrables par l’administrateur global', async () => {
+  const admin = await login('admin.global');
+  const reader = await login('lecteur.global');
+  const initial = (await admin('/api/regulations')).body.regulations;
+  assert.deepEqual(initial.map((r) => r.code), ['DORA', 'PECI', 'PBE', 'RES', 'ABE']);
+  const s2 = { code: 's2', label: 'Solvabilité II', name: 'Externalisation Solvabilité II', color: 'teal', criticalLabel: 'Importante ou critique' };
+  assert.equal((await reader('/api/regulations', { method: 'POST', body: { data: s2 } })).status, 403);
+  const created = await admin('/api/regulations', { method: 'POST', body: { data: s2 } });
+  assert.equal(created.status, 201);
+  assert.equal(created.body.code, 'S2');
+  assert.equal((await admin('/api/regulations', { method: 'POST', body: { data: s2 } })).status, 409);
+
+  // Une prestation peut porter la nouvelle qualification.
+  const tiers = (await admin('/api/tiers')).body.tiers[0];
+  const p = await admin('/api/prestations', { method: 'POST', body: { tiersId: tiers.id, data: { title: 'Gestion des sinistres', qualifications: { S2: { critical: true }, PECI: {} } } } });
+  assert.deepEqual(Object.keys(p.body.data.qualifications).sort(), ['PECI', 'S2']);
+
+  // Désactivée : plus proposée, mais conservée sur les prestations existantes ; non supprimable si utilisée.
+  assert.equal((await admin('/api/regulations/S2', { method: 'PUT', body: { data: s2, active: false } })).status, 200);
+  const edited = await admin(`/api/prestations/${p.body.id}`, { method: 'PUT', body: { data: { title: 'Gestion des sinistres', qualifications: { PECI: {} } } } });
+  assert.deepEqual(Object.keys(edited.body.data.qualifications).sort(), ['PECI', 'S2']);
+  const other = await admin('/api/prestations', { method: 'POST', body: { tiersId: tiers.id, data: { title: 'Autre', qualifications: { S2: {} } } } });
+  assert.deepEqual(other.body.data.qualifications, {});
+  assert.equal((await admin('/api/regulations/S2', { method: 'DELETE' })).status, 409);
+  assert.equal((await admin('/api/regulations/DORA', { method: 'DELETE' })).status, 400);
+  assert.equal((await admin('/api/regulations/DORA', { method: 'PUT', body: { data: initial[0], active: false } })).status, 400);
+
+  // Ordre et paramètres de l'organisation.
+  await admin('/api/regulations/ABE/move', { method: 'POST', body: { dir: -1 } });
+  assert.deepEqual((await admin('/api/regulations')).body.regulations.map((r) => r.code), ['DORA', 'PECI', 'PBE', 'ABE', 'RES', 'S2']);
+  assert.equal((await admin('/api/settings', { method: 'PUT', body: { data: { orgName: 'Banque Exemple' } } })).body.orgName, 'Banque Exemple');
+  assert.equal((await reader('/api/regulations')).body.settings.orgName, 'Banque Exemple');
+  await admin(`/api/prestations/${p.body.id}`, { method: 'DELETE' });
+  await admin(`/api/prestations/${other.body.id}`, { method: 'DELETE' });
+  assert.equal((await admin('/api/regulations/S2', { method: 'DELETE' })).status, 200);
+});
+
 test('administrateur global : utilisateurs, contrôles, export puis import', async () => {
   const api = await login('admin.global');
   const providers = (await api('/api/register')).body.tables['b_05.01'];

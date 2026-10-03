@@ -2,9 +2,10 @@
 //
 // Un tiers est toute entreprise ou personne qui fournit une prestation, qu'elle relève de DORA ou non.
 // Ce sont les prestations qui portent les qualifications réglementaires ; une même prestation peut
-// en cumuler plusieurs (par exemple DORA et PECI).
+// en cumuler plusieurs (par exemple DORA et PECI). La liste des régulations est paramétrable par
+// l'administrateur global ; celles-ci sont créées au premier démarrage.
 
-export const QUALIFICATIONS = [
+export const DEFAULT_REGULATIONS = [
   {
     code: 'DORA',
     label: 'DORA',
@@ -46,7 +47,65 @@ export const QUALIFICATIONS = [
     color: 'green',
   },
 ];
-export const QUALIF_BY_CODE = Object.fromEntries(QUALIFICATIONS.map((q) => [q.code, q]));
+
+/** Régulations proposées à l'ajout, pour d'autres types d'entreprises (assurance, gestion d'actifs…). */
+export const REGULATION_CATALOG = [
+  {
+    code: 'S2',
+    label: 'Solvabilité II',
+    name: 'Externalisation Solvabilité II',
+    desc: 'Externalisation d’une fonction ou activité d’un organisme d’assurance au sens de Solvabilité II.',
+    criticalLabel: 'Fonction ou activité opérationnelle importante ou critique',
+    color: 'teal',
+  },
+  {
+    code: 'RGPD',
+    label: 'RGPD',
+    name: 'Sous-traitant de données personnelles',
+    desc: 'Le tiers traite des données à caractère personnel pour le compte de l’entreprise (article 28 du RGPD).',
+    criticalLabel: 'Données sensibles ou traitement à grande échelle',
+    color: 'pink',
+  },
+  {
+    code: 'NIS2',
+    label: 'NIS 2',
+    name: 'Chaîne d’approvisionnement NIS 2',
+    desc: 'Fournisseur ou prestataire relevant de la sécurité de la chaîne d’approvisionnement au titre de NIS 2.',
+    criticalLabel: 'Fournisseur critique',
+    color: 'indigo',
+  },
+];
+
+export const REGULATION_COLORS = [
+  ['blue', 'Bleu'],
+  ['red', 'Rouge'],
+  ['purple', 'Violet'],
+  ['orange', 'Orange'],
+  ['green', 'Vert'],
+  ['teal', 'Turquoise'],
+  ['pink', 'Rose'],
+  ['indigo', 'Indigo'],
+];
+
+/** Code de la régulation reliée au registre d'information DORA : elle ne peut pas être supprimée. */
+export const DORA_CODE = 'DORA';
+
+/** Nettoie une régulation ; renvoie { data, errors }. */
+export function cleanRegulation(input = {}) {
+  const data = {
+    code: str(input.code, 16).toUpperCase(),
+    label: str(input.label, 30),
+    name: str(input.name, 120),
+    desc: str(input.desc, 600),
+    criticalLabel: str(input.criticalLabel, 120) || null,
+    color: REGULATION_COLORS.some(([c]) => c === input.color) ? input.color : 'blue',
+  };
+  const errors = {};
+  if (!/^[A-Z][A-Z0-9_]{1,15}$/.test(data.code)) errors.code = 'Code de 2 à 16 caractères : lettres, chiffres, _ (ex. PECI)';
+  if (!data.label) errors.label = 'Libellé court obligatoire';
+  if (!data.name) errors.name = 'Nom obligatoire';
+  return { data, errors };
+}
 
 export const TIERS_CATEGORIES = [
   'Prestataire informatique',
@@ -107,10 +166,13 @@ export function cleanTiers(input = {}) {
   return { data, errors };
 }
 
-/** Nettoie une prestation ; renvoie { data, errors }. */
-export function cleanPrestation(input = {}) {
+/**
+ * Nettoie une prestation ; renvoie { data, errors }. `regulations` est la liste des régulations
+ * actives : les qualifications d'une régulation inconnue ou désactivée sont écartées.
+ */
+export function cleanPrestation(input = {}, regulations = DEFAULT_REGULATIONS) {
   const qualifications = {};
-  for (const q of QUALIFICATIONS) {
+  for (const q of regulations) {
     const v = input.qualifications?.[q.code];
     if (!v) continue;
     qualifications[q.code] = { critical: !!(q.criticalLabel && v.critical), note: str(v.note, 2000) };

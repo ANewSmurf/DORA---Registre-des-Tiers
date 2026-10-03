@@ -4,7 +4,7 @@ import ExcelJS from 'exceljs';
 import { schema } from './schema.js';
 import { allRecords, audit } from './db.js';
 import { computeScope, isGlobal } from './access.js';
-import { QUALIFICATIONS, STATUS_BY_CODE } from '../public/shared/tiers-model.js';
+import { STATUS_BY_CODE } from '../public/shared/tiers-model.js';
 
 const YES = 'eba_BT:x28';
 
@@ -173,7 +173,7 @@ export function syncFromDora(db, user) {
 }
 
 /** Classeur Excel des tiers et prestations (une colonne Oui/Non par qualification). */
-export async function exportTiersWorkbook(tiers, prestations) {
+export async function exportTiersWorkbook(tiers, prestations, regulations) {
   const wb = new ExcelJS.Workbook();
   wb.creator = 'Registre des tiers';
   const head = (ws, cols) => {
@@ -192,7 +192,7 @@ export async function exportTiersWorkbook(tiers, prestations) {
     ['Contact', 'contactName', 22],
     ['E-mail', 'contactEmail', 28],
     ['Prestations', 'count', 12],
-    ...QUALIFICATIONS.map((q) => [q.label, q.code, 12]),
+    ...regulations.map((q) => [q.label, q.code, 12]),
     ['Notes', 'notes', 40],
   ]);
   const byTiers = new Map();
@@ -200,7 +200,7 @@ export async function exportTiersWorkbook(tiers, prestations) {
   for (const t of tiers) {
     const own = byTiers.get(t.id) || [];
     const row = { ...t.data, count: own.length };
-    for (const q of QUALIFICATIONS) row[q.code] = own.some((p) => p.data.qualifications?.[q.code]) ? 'Oui' : 'Non';
+    for (const q of regulations) row[q.code] = own.some((p) => p.data.qualifications?.[q.code]) ? 'Oui' : 'Non';
     wsT.addRow(row);
   }
   const wsP = wb.addWorksheet('Prestations');
@@ -216,7 +216,7 @@ export async function exportTiersWorkbook(tiers, prestations) {
     ['Coût annuel', 'annualCost', 14],
     ['Prochaine revue', 'nextReview', 14],
     ['Contrat DORA', 'doraContract', 18],
-    ...QUALIFICATIONS.flatMap((q) => [[q.label, q.code, 12], ...(q.criticalLabel ? [[`${q.label} – critique`, `${q.code}_crit`, 14]] : [])]),
+    ...regulations.flatMap((q) => [[q.label, q.code, 12], ...(q.criticalLabel ? [[`${q.label} – critique`, `${q.code}_crit`, 14]] : [])]),
     ['Description', 'description', 40],
   ]);
   const names = new Map(tiers.map((t) => [t.id, t.data.name]));
@@ -224,7 +224,7 @@ export async function exportTiersWorkbook(tiers, prestations) {
     const d = p.data;
     const row = { ...d, tiers: names.get(p.tiers_id), status: STATUS_BY_CODE[d.status]?.label || d.status };
     row.annualCost = d.annualCost ? Number(d.annualCost) : null;
-    for (const q of QUALIFICATIONS) {
+    for (const q of regulations) {
       const v = d.qualifications?.[q.code];
       row[q.code] = v ? 'Oui' : 'Non';
       if (q.criticalLabel) row[`${q.code}_crit`] = v ? (v.critical ? 'Oui' : 'Non') : '';
