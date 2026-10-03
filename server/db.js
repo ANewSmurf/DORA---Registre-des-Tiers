@@ -114,6 +114,37 @@ export const MIGRATIONS = [
       }
     },
   },
+  {
+    version: 3,
+    name: 'prestations partagées entre plusieurs tiers',
+    up: (db) => {
+      // Le tiers d'une prestation passe dans une table de liaison : une prestation peut être
+      // fournie par plusieurs tiers et un tiers fournir plusieurs prestations.
+      const links = db.prepare('SELECT id, tiers_id FROM prestations').all();
+      db.exec(`
+        CREATE TABLE prestations_v3 (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          data TEXT NOT NULL,
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+          updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL
+        );
+        INSERT INTO prestations_v3 (id, data, created_at, updated_at, updated_by)
+          SELECT id, data, created_at, updated_at, updated_by FROM prestations;
+        DROP INDEX IF EXISTS prestations_tiers;
+        DROP TABLE prestations;
+        ALTER TABLE prestations_v3 RENAME TO prestations;
+        CREATE TABLE prestation_tiers (
+          prestation_id INTEGER NOT NULL REFERENCES prestations(id) ON DELETE CASCADE,
+          tiers_id INTEGER NOT NULL REFERENCES tiers(id) ON DELETE CASCADE,
+          PRIMARY KEY (prestation_id, tiers_id)
+        );
+        CREATE INDEX prestation_tiers_tiers ON prestation_tiers(tiers_id);
+      `);
+      const link = db.prepare('INSERT INTO prestation_tiers (prestation_id, tiers_id) VALUES (?, ?)');
+      for (const r of links) link.run(r.id, r.tiers_id);
+    },
+  },
 ];
 export const SCHEMA_VERSION = MIGRATIONS.at(-1).version;
 

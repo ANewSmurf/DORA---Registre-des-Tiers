@@ -328,6 +328,7 @@ function route() {
   else if (page === 'tiers' && arg) view = tiersPage(Number(arg));
   else if (page === 'tiers') view = tiersList();
   else if (page === 'prestations') view = prestationsList(arg);
+  else if (page === 'prestation' && arg) view = prestationPage(Number(arg));
   else if (page === 'dora' && !arg) view = simple ? readerHome() : dashboard();
   else if (page === 'dora' && arg === 'prestataires' && sub) view = simple ? readerProvider(Number(sub)) : providerSheet(Number(sub));
   else if (page === 'dora' && arg === 'prestataires') view = simple ? readerProviders() : providersList();
@@ -1748,7 +1749,7 @@ function prestaChips(p, small) {
 /** Tiers enrichis de leurs prestations et qualifications cumulées. */
 function tiersModels() {
   const byTiers = new Map();
-  for (const p of state.prestations) (byTiers.get(p.tiers_id) || byTiers.set(p.tiers_id, []).get(p.tiers_id)).push(p);
+  for (const p of state.prestations) for (const t of p.tiersIds) (byTiers.get(t) || byTiers.set(t, []).get(t)).push(p);
   return state.tiers
     .map((t) => {
       const prestations = byTiers.get(t.id) || [];
@@ -1767,6 +1768,14 @@ function tiersChips(t, small) {
 }
 
 const tiersById = (id) => state.tiers.find((t) => t.id === id);
+const prestationById = (id) => state.prestations.find((p) => p.id === id);
+/** Noms des tiers d'une prestation (les tiers hors périmètre sont seulement comptés). */
+function tiersNames(p, exceptId) {
+  const names = p.tiersIds.filter((t) => t !== exceptId).map((t) => tiersById(t)?.data.name).filter(Boolean);
+  if (p.others) names.push(plural(p.others, 'autre tiers', 'autres tiers'));
+  return names.join(', ');
+}
+const canCreatePrestation = () => state.me.role === 'global_admin' || state.me.role === 'tiers_admin';
 const directionBy = (id) => state.org.directions.find((d) => d.id === id);
 const managerBy = (id) => state.org.managers.find((m) => m.id === id);
 /** Organisation interne d'une prestation : direction COMEX, responsable COMEX, responsable du tiers. */
@@ -1806,7 +1815,7 @@ function homeView() {
   });
   const qTile = (q) => {
     const ps = live.filter((p) => p.data.qualifications?.[q.code]);
-    const nTiers = new Set(ps.map((p) => p.tiers_id)).size;
+    const nTiers = new Set(ps.flatMap((p) => p.tiersIds)).size;
     const crit = ps.filter((p) => p.data.qualifications[q.code].critical).length;
     return h(
       'a',
@@ -1819,7 +1828,7 @@ function homeView() {
   const todo = (title, list, render, empty) =>
     h('div', { class: 'card' }, h('h2', {}, title, ' ', h('span', { class: `badge ${list.length ? 'incomplet' : 'ok'}` }, list.length)), list.length ? h('ul', { class: 'plain' }, list.slice(0, 6).map(render)) : h('div', { class: 'empty small' }, empty));
   const prestaLine = (p, extra) =>
-    h('li', {}, h('a', { href: `#/tiers/${p.tiers_id}` }, p.data.title), h('div', { class: 'muted small' }, tiersById(p.tiers_id)?.data.name, extra ? ` · ${extra}` : ''));
+    h('li', {}, h('a', { href: `#/prestation/${p.id}` }, p.data.title), h('div', { class: 'muted small' }, tiersNames(p), extra ? ` · ${extra}` : ''));
   const recent = [...tiers].sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || '')).slice(0, 5);
   return h(
     'div',
@@ -1978,9 +1987,9 @@ function tiersPage(id) {
           'div',
           { class: 'page-head' },
           h('h2', { class: 'section-title' }, `Prestations (${t.prestations.length})`),
-          t.editable ? h('button', { class: 'btn primary', onclick: () => prestationModal(t.id, null) }, '+ Ajouter une prestation') : null,
+          t.editable ? h('button', { class: 'btn primary', onclick: () => addPrestationToTiers(t) }, '+ Ajouter une prestation') : null,
         ),
-        sorted.length ? sorted.map((p) => prestationCard(p, t.editable)) : h('div', { class: 'card empty' }, 'Aucune prestation pour ce tiers.'),
+        sorted.length ? sorted.map((p) => prestationCard(p, { fromTiers: t.id })) : h('div', { class: 'card empty' }, 'Aucune prestation pour ce tiers.'),
       ),
       h(
         'div',
@@ -2033,21 +2042,25 @@ function contactsCard(t) {
   );
 }
 
-function prestationCard(p, editable) {
+/** Carte d'une prestation ; sur la fiche d'un tiers (fromTiers), propose de la retirer de ce tiers. */
+function prestationCard(p, { fromTiers, page } = {}) {
   const d = p.data;
   const st = STATUS_BY_CODE[d.status] || STATUS_BY_CODE.active;
   const notes = qualifCodes(p).filter((c) => d.qualifications[c].note).map((c) => h('div', { class: 'small' }, h('b', {}, `${regBy(c).label} : `), d.qualifications[c].note));
   const fact = (label, value) => (value ? h('div', { class: 'fact' }, h('span', { class: 'muted small' }, label), h('span', {}, value)) : null);
+  const shared = fromTiers ? tiersNames(p, fromTiers) : '';
+  const canDelete = p.editable && !p.others && (state.me.role === 'global_admin' || p.tiersIds.every((t) => tiersById(t)?.editable));
   return h(
     'div',
     { class: `card presta${d.status === 'terminee' ? ' ended' : ''}` },
     h(
       'div',
       { class: 'presta-head' },
-      h('div', {}, h('h3', {}, d.title), h('div', { class: 'muted small' }, [d.domain, d.entity].filter(Boolean).join(' · '))),
+      h('div', {}, page ? null : h('h3', {}, h('a', { href: `#/prestation/${p.id}` }, d.title)), h('div', { class: 'muted small' }, [d.domain, d.entity].filter(Boolean).join(' · '))),
       h('span', { class: `badge ${st.cls}` }, st.label),
     ),
     h('div', { class: 'chips' }, prestaChips(p)),
+    shared ? h('div', { class: 'small shared-with' }, '↔ Aussi fournie par ', h('b', {}, shared)) : null,
     d.description ? h('p', { class: 'small' }, d.description) : null,
     h(
       'div',
@@ -2061,30 +2074,164 @@ function prestationCard(p, editable) {
       fact('Contrat DORA', d.doraContract),
     ),
     notes.length ? h('div', { class: 'qnotes' }, notes) : null,
-    editable
+    p.editable
       ? h(
           'div',
           { class: 'presta-actions' },
-          h('button', { class: 'btn small-btn', onclick: () => prestationModal(p.tiers_id, p) }, 'Modifier'),
-          h(
-            'button',
-            {
-              class: 'btn link small',
-              onclick: async () => {
-                if (!confirm(`Supprimer la prestation « ${d.title} » ?`)) return;
-                try {
-                  await api(`/api/prestations/${p.id}`, { method: 'DELETE' });
-                  toast('Prestation supprimée');
-                  await reloadAndRender();
-                } catch (e) {
-                  if (!e.handled) toast(e.message);
-                }
-              },
-            },
-            'Supprimer',
-          ),
+          h('button', { class: 'btn small-btn', onclick: () => prestationModal(p) }, 'Modifier'),
+          fromTiers && p.tiersIds.length + (p.others || 0) > 1 && tiersById(fromTiers)?.editable
+            ? h(
+                'button',
+                {
+                  class: 'btn link small',
+                  onclick: () =>
+                    confirm(`Retirer « ${d.title} » de ce tiers ? La prestation reste rattachée à ${tiersNames(p, fromTiers)}.`) &&
+                    runAndReload(() => api(`/api/prestations/${p.id}/tiers/${fromTiers}`, { method: 'DELETE' }), 'Prestation retirée de ce tiers'),
+                },
+                'Retirer de ce tiers',
+              )
+            : null,
+          canDelete
+            ? h(
+                'button',
+                {
+                  class: 'btn link small',
+                  onclick: async () => {
+                    if (!confirm(`Supprimer la prestation « ${d.title} »${p.tiersIds.length > 1 ? ` pour tous ses tiers (${tiersNames(p)})` : ''} ?`)) return;
+                    if (page) location.hash = '#/prestations';
+                    await runAndReload(() => api(`/api/prestations/${p.id}`, { method: 'DELETE' }), 'Prestation supprimée');
+                  },
+                },
+                'Supprimer',
+              )
+            : null,
         )
       : null,
+  );
+}
+
+/** Choix dans une liste filtrable, avec en option la création d'un nouvel élément. */
+function pickerModal({ title, intro, items, emptyText, onPick, createLabel, onCreate }) {
+  const search = h('input', { type: 'search', class: 'search', placeholder: 'Rechercher…' });
+  const list = h('div', { class: 'pick-list' });
+  const draw = () => {
+    const q = search.value.toLowerCase();
+    const shown = items.filter((it) => !q || `${it.label} ${it.sub || ''}`.toLowerCase().includes(q));
+    list.replaceChildren(
+      ...(shown.length
+        ? shown.map((it) =>
+            h(
+              'button',
+              { class: 'pick-item', onclick: async () => (await onPick(it)) !== false && close() },
+              it.avatar ? avatar(it.avatar) : null,
+              h('div', {}, h('b', {}, it.label), it.sub ? h('div', { class: 'muted small' }, it.sub) : null),
+              h('span', { class: 'pick-go' }, 'Sélectionner'),
+            ),
+          )
+        : [h('div', { class: 'empty small' }, items.length ? 'Aucun résultat.' : emptyText)]),
+    );
+  };
+  search.addEventListener('input', draw);
+  draw();
+  const close = openModal({
+    title,
+    narrow: true,
+    body: [
+      createLabel ? h('button', { class: 'btn primary pick-create', onclick: () => (close(), onCreate()) }, createLabel) : null,
+      createLabel ? h('div', { class: 'pick-or muted small' }, 'ou sélectionner un élément existant') : null,
+      intro ? h('p', { class: 'muted small' }, intro) : null,
+      search,
+      list,
+    ],
+    footer: [h('button', { class: 'btn', onclick: () => close() }, 'Fermer')],
+  });
+  search.focus();
+}
+
+/** Depuis la fiche d'un tiers : créer une prestation ou sélectionner une prestation existante. */
+function addPrestationToTiers(t) {
+  const items = state.prestations
+    .filter((p) => p.editable && !p.tiersIds.includes(t.id))
+    .sort((a, b) => a.data.title.localeCompare(b.data.title, 'fr'))
+    .map((p) => ({ id: p.id, label: p.data.title, sub: [tiersNames(p), qualifCodes(p).map((c) => regBy(c).label).join(' · ')].filter(Boolean).join(' — ') }));
+  pickerModal({
+    title: `Ajouter une prestation · ${t.data.name}`,
+    createLabel: '+ Créer une nouvelle prestation',
+    onCreate: () => prestationModal(null, { tiersIds: [t.id] }),
+    intro: 'La prestation sélectionnée est associée à ce tiers, sans être retirée de ses autres tiers.',
+    items,
+    emptyText: 'Aucune autre prestation disponible.',
+    onPick: (it) => runAndReload(() => api(`/api/prestations/${it.id}/tiers`, { method: 'POST', body: { tiersId: t.id } }), 'Prestation associée au tiers'),
+  });
+}
+
+/** Depuis une prestation : associer un tiers existant ou en créer un. */
+function addTiersToPrestation(p) {
+  const items = tiersModels()
+    .filter((t) => t.editable && !p.tiersIds.includes(t.id))
+    .map((t) => ({ id: t.id, label: t.data.name, sub: [t.data.category, countryName(t.data.country)].filter(Boolean).join(' · '), avatar: t.data.name }));
+  pickerModal({
+    title: `Associer un tiers · ${p.data.title}`,
+    createLabel: '+ Créer un nouveau tiers',
+    onCreate: () => tiersModal(null, false, { linkPrestation: p.id }),
+    items,
+    emptyText: 'Aucun autre tiers disponible.',
+    onPick: (it) => runAndReload(() => api(`/api/prestations/${p.id}/tiers`, { method: 'POST', body: { tiersId: it.id } }), 'Tiers associé à la prestation'),
+  });
+}
+
+function prestationPage(id) {
+  const p = prestationById(id);
+  if (!p) return h('div', { class: 'empty' }, 'Prestation introuvable ou hors de votre périmètre.');
+  const models = tiersModels();
+  const linked = p.tiersIds.map((t) => models.find((m) => m.id === t)).filter(Boolean);
+  const canUnlink = (t) => p.editable && t.editable && p.tiersIds.length + (p.others || 0) > 1;
+  return h(
+    'div',
+    {},
+    h('a', { href: '#/prestations', class: 'small' }, '← Toutes les prestations'),
+    h('div', { class: 'page-head' }, h('h1', {}, p.data.title)),
+    h(
+      'div',
+      { class: 'tiers-layout' },
+      h('div', {}, prestationCard(p, { page: true })),
+      h(
+        'div',
+        {},
+        h(
+          'div',
+          { class: 'card' },
+          h(
+            'div',
+            { class: 'page-head' },
+            h('h2', { style: 'margin:0' }, `Tiers (${p.tiersIds.length + (p.others || 0)})`),
+            p.editable ? h('button', { class: 'btn small-btn', onclick: () => addTiersToPrestation(p) }, '+ Associer un tiers') : null,
+          ),
+          h(
+            'div',
+            { class: 'linked-tiers' },
+            linked.map((t) =>
+              h(
+                'div',
+                { class: 'linked-row' },
+                h('a', { href: `#/tiers/${t.id}`, class: 'tiers-cell' }, avatar(t.data.name), h('div', {}, h('b', {}, t.data.name), h('div', { class: 'muted small' }, [t.data.category, countryName(t.data.country)].filter(Boolean).join(' · ')))),
+                canUnlink(t)
+                  ? h(
+                      'button',
+                      {
+                        class: 'btn link small',
+                        onclick: () => confirm(`Retirer ${t.data.name} de cette prestation ?`) && runAndReload(() => api(`/api/prestations/${p.id}/tiers/${t.id}`, { method: 'DELETE' }), 'Tiers retiré'),
+                      },
+                      'Retirer',
+                    )
+                  : null,
+              ),
+            ),
+            p.others ? h('div', { class: 'muted small' }, `+ ${plural(p.others, 'tiers hors de votre périmètre', 'tiers hors de votre périmètre')}`) : null,
+          ),
+        ),
+      ),
+    ),
   );
 }
 
@@ -2092,7 +2239,6 @@ const prestaFilter = { q: '', status: 'live' };
 
 function prestationsList(qualArg) {
   const qual = { v: qualArg || '' };
-  const names = new Map(state.tiers.map((t) => [t.id, t.data.name]));
   const search = h('input', { class: 'search', type: 'search', placeholder: 'Rechercher…', value: prestaFilter.q });
   const status = h('select', {}, h('option', { value: 'live' }, 'En cours et en projet'), h('option', { value: '' }, 'Tous les statuts'), STATUSES.map((s) => h('option', { value: s.code }, s.label)));
   status.value = prestaFilter.status;
@@ -2104,11 +2250,11 @@ function prestationsList(qualArg) {
     const list = state.prestations
       .filter(
         (p) =>
-          (!q || `${p.data.title} ${names.get(p.tiers_id)} ${p.data.domain} ${p.data.entity} ${Object.values(orgOf(p)).join(' ')}`.toLowerCase().includes(q)) &&
+          (!q || `${p.data.title} ${tiersNames(p)} ${p.data.domain} ${p.data.entity} ${Object.values(orgOf(p)).join(' ')}`.toLowerCase().includes(q)) &&
           (prestaFilter.status === 'live' ? p.data.status !== 'terminee' : !prestaFilter.status || p.data.status === prestaFilter.status) &&
           (!qual.v || (qual.v === 'aucune' ? !qualifCodes(p).length : p.data.qualifications?.[qual.v])),
       )
-      .sort((a, b) => (names.get(a.tiers_id) || '').localeCompare(names.get(b.tiers_id) || '', 'fr') || a.data.title.localeCompare(b.data.title, 'fr'));
+      .sort((a, b) => a.data.title.localeCompare(b.data.title, 'fr') || tiersNames(a).localeCompare(tiersNames(b), 'fr'));
     chipsBox.replaceChildren(filterChips(() => qual.v, (c) => ((qual.v = c), history.replaceState(null, '', c ? `#/prestations/${c}` : '#/prestations'), draw()), true));
     info.textContent = plural(list.length, 'prestation', 'prestations');
     tbody.replaceChildren(
@@ -2116,9 +2262,14 @@ function prestationsList(qualArg) {
         const st = STATUS_BY_CODE[p.data.status] || STATUS_BY_CODE.active;
         return h(
           'tr',
-          { onclick: () => (location.hash = `#/tiers/${p.tiers_id}`) },
+          { onclick: () => (location.hash = `#/prestation/${p.id}`) },
           h('td', {}, h('b', {}, p.data.title), h('div', { class: 'muted small' }, [p.data.domain, p.data.entity].filter(Boolean).join(' · '))),
-          h('td', {}, h('span', { class: 'tiers-cell' }, avatar(names.get(p.tiers_id) || '?'), names.get(p.tiers_id))),
+          h(
+            'td',
+            {},
+            p.tiersIds.map((t) => h('div', { class: 'tiers-cell' }, avatar(tiersById(t)?.data.name || '?'), tiersById(t)?.data.name)),
+            p.others ? h('div', { class: 'muted small' }, `+ ${plural(p.others, 'autre tiers', 'autres tiers')}`) : null,
+          ),
           h('td', {}, h('div', { class: 'chips' }, prestaChips(p, true))),
           h('td', {}, orgOf(p).manager || '—', h('div', { class: 'muted small' }, orgOf(p).direction)),
           h('td', {}, p.data.end ? frDate(p.data.end) : '—'),
@@ -2138,7 +2289,12 @@ function prestationsList(qualArg) {
       'div',
       { class: 'page-head' },
       h('div', {}, h('h1', {}, 'Prestations'), h('div', { class: 'muted' }, `Chaque prestation porte ses qualifications : ${regs().map((r) => r.label).join(', ')}.`)),
-      h('a', { class: 'btn', href: '/api/tiers/export.xlsx' }, 'Exporter (.xlsx)'),
+      h(
+        'div',
+        { class: 'toolbar' },
+        h('a', { class: 'btn', href: '/api/tiers/export.xlsx' }, 'Exporter (.xlsx)'),
+        canCreatePrestation() ? h('button', { class: 'btn primary', onclick: () => prestationModal(null, {}) }, '+ Nouvelle prestation') : null,
+      ),
     ),
     h('div', { class: 'filters' }, h('div', { class: 'toolbar' }, search, status, info), chipsBox),
     h('div', { class: 'table-wrap' }, h('table', { class: 'data' }, h('thead', {}, h('tr', {}, ['Prestation', 'Tiers', 'Qualifications', 'Responsable', 'Fin', 'Statut'].map((x) => h('th', {}, x)))), tbody)),
@@ -2214,7 +2370,7 @@ function contactsEditor(initial) {
   return el;
 }
 
-function tiersModal(t, focusContacts) {
+function tiersModal(t, focusContacts, { linkPrestation } = {}) {
   const d = t?.data || {};
   const countries = [...(state.lists.LISTCOUNTRY?.keys() || [])].map((c) => c.replace('eba_GA:', '')).filter((c) => /^[A-Z]{2}$/.test(c));
   const inputs = {
@@ -2251,9 +2407,11 @@ function tiersModal(t, focusContacts) {
             const data = Object.fromEntries(Object.entries(inputs).map(([k, el]) => [k, el.value]));
             data.contacts = contacts.value();
             const saved = t ? await api(`/api/tiers/${t.id}`, { method: 'PUT', body: { data } }) : await api('/api/tiers', { method: 'POST', body: { data } });
+            // Tiers créé depuis une prestation : il lui est associé et l'on reste sur la prestation.
+            if (linkPrestation) await api(`/api/prestations/${linkPrestation}/tiers`, { method: 'POST', body: { tiersId: saved.id } });
             close();
-            toast(t ? 'Tiers enregistré' : 'Tiers créé');
-            location.hash = `#/tiers/${saved.id}`;
+            toast(linkPrestation ? 'Tiers créé et associé à la prestation' : t ? 'Tiers enregistré' : 'Tiers créé');
+            if (!linkPrestation) location.hash = `#/tiers/${saved.id}`;
             await reloadAndRender();
           }),
         },
@@ -2266,8 +2424,26 @@ function tiersModal(t, focusContacts) {
 
 const ORG_FIELDS = ['directionId', 'comexHead', 'managerId'];
 
-function prestationModal(tiersId, p) {
+/** Formulaire d'une prestation ; à la création, tiersIds donne le tiers d'origine, sinon un tiers est à choisir. */
+function prestationModal(p, { tiersIds } = {}) {
   const d = p?.data || {};
+  const chooseTiers = !p && !tiersIds?.length;
+  const tiersChoice = selectOf(
+    [
+      ['__new', '+ Nouveau tiers…'],
+      ...tiersModels()
+        .filter((t) => t.editable)
+        .map((t) => [String(t.id), t.data.name]),
+    ],
+    '',
+    'Choisir un tiers…',
+  );
+  const newTiersName = h('input', { placeholder: 'Nom du nouveau tiers', hidden: true });
+  let createdTiersId = null;
+  tiersChoice.addEventListener('change', () => {
+    newTiersName.hidden = tiersChoice.value !== '__new';
+    if (!newTiersName.hidden) newTiersName.focus();
+  });
   const entities = [...new Set([...(state.tables['b_01.02'] || []).map((r) => r.data['b_01.02.0020']), ...state.prestations.map((x) => x.data.entity)].filter(Boolean))].sort();
   const contracts = [...new Set((state.tables['b_02.01'] || []).map((r) => r.data['b_02.01.0010']).filter(Boolean))].sort();
   const entityList = h('datalist', { id: 'dl-entities' }, entities.map((e) => h('option', { value: e })));
@@ -2291,6 +2467,7 @@ function prestationModal(tiersId, p) {
   };
   inputs.status.querySelector('option[value=""]')?.remove();
   const fields = {
+    ...(chooseTiers ? { tiers: formField('Tiers', h('div', { class: 'tiers-choice' }, tiersChoice, newTiersName), { required: true, wide: true, hint: 'D’autres tiers pourront être associés ensuite depuis la fiche de la prestation.' }) } : {}),
     title: formField('Intitulé', inputs.title, { required: true, wide: true }),
     domain: formField('Domaine', inputs.domain),
     entity: formField('Entité bénéficiaire', inputs.entity),
@@ -2344,9 +2521,9 @@ function prestationModal(tiersId, p) {
     return card;
   });
   const alert = h('div', { class: 'alert error', hidden: true });
-  const tiersName = tiersById(tiersId)?.data.name || '';
+  const tiersName = tiersIds?.length ? tiersById(tiersIds[0])?.data.name : '';
   const close = openModal({
-    title: p ? `Modifier la prestation` : `Nouvelle prestation · ${tiersName}`,
+    title: p ? `Modifier la prestation` : tiersName ? `Nouvelle prestation · ${tiersName}` : 'Nouvelle prestation',
     body: [
       alert,
       entityList,
@@ -2372,8 +2549,21 @@ function prestationModal(tiersId, p) {
             }
             data.doraContract = quals[state.doraCode]?.on.checked ? doraContract.value : '';
             data.owner = d.owner || '';
-            if (p) await api(`/api/prestations/${p.id}`, { method: 'PUT', body: { data } });
-            else await api('/api/prestations', { method: 'POST', body: { tiersId, data } });
+            if (p) {
+              await api(`/api/prestations/${p.id}`, { method: 'PUT', body: { data } });
+            } else {
+              let ids = tiersIds;
+              if (chooseTiers) {
+                if (!tiersChoice.value || (tiersChoice.value === '__new' && !newTiersName.value.trim())) {
+                  throw Object.assign(new Error('Choisissez un tiers ou indiquez le nom du nouveau tiers'), { data: { errors: { tiers: 'Tiers obligatoire' } } });
+                }
+                // Le nouveau tiers n'est créé qu'une fois, même si l'enregistrement de la prestation échoue.
+                if (tiersChoice.value === '__new') createdTiersId ||= (await api('/api/tiers', { method: 'POST', body: { data: { name: newTiersName.value } } })).id;
+                ids = [tiersChoice.value === '__new' ? createdTiersId : Number(tiersChoice.value)];
+              }
+              const created = await api('/api/prestations', { method: 'POST', body: { tiersIds: ids, data } });
+              if (chooseTiers) location.hash = `#/prestation/${created.id}`;
+            }
             close();
             toast('Prestation enregistrée');
             await reloadAndRender();
