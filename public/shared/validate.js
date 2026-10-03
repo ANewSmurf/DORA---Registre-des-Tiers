@@ -19,7 +19,10 @@ export function isValidLei(value) {
 }
 
 export const CODE_TYPE_RE = /^(LEI|EUID|[A-Z]{2}_(CRN|VAT|PNR|NIN))$/;
+// Format EBA d'un identifiant de fonction (F suivi d'un nombre). Dans le registre, l'entité peut garder
+// son identifiant local (ex. BRED-CRIT-F4) : l'export au format EBA lui attribue un identifiant conforme.
 export const FUNCTION_RE = /^F[0-9]+$/;
+export const LOCAL_FUNCTION_RE = /^[\p{L}\p{N}][\p{L}\p{N} ._\/-]{0,99}$/u;
 
 export function isValidDate(value) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -45,7 +48,7 @@ export function checkValue(schema, col, value, row = {}) {
     case 'int':
       return /^\d+$/.test(String(v)) ? null : 'Entier positif ou nul attendu';
     case 'function':
-      return FUNCTION_RE.test(v) ? null : 'Format attendu : F suivi d’un nombre (ex. F1)';
+      return LOCAL_FUNCTION_RE.test(v) ? null : 'Identifiant de 1 à 100 caractères : lettres, chiffres, espace, . _ / -';
     case 'codeType':
       if (col.code === 'b_05.02.0070' && v === 'Not applicable') return null;
       return CODE_TYPE_RE.test(v) ? null : 'Format attendu : LEI, EUID ou PAYS_TYPE (ex. FR_CRN, DE_VAT)';

@@ -64,6 +64,7 @@ test('validation des formats', () => {
   assert.equal(checkValue(schema, col('b_02.02.0040'), 'FR_CRN'), null);
   assert.match(checkValue(schema, col('b_02.02.0040'), 'SIREN'), /Format attendu/);
   assert.equal(checkValue(schema, col('b_06.01.0010'), 'F12'), null);
+  assert.equal(checkValue(schema, col('b_06.01.0010'), 'BRED-CRIT-F4'), null);
   assert.match(checkValue(schema, col('b_02.02.0060'), 'eba_TA:S99'), /liste/);
   assert.equal(checkValue(schema, col('b_02.02.0010'), ''), 'Champ obligatoire');
 });
@@ -308,4 +309,37 @@ test('import au format de remise EBA (onglets b_xx_xx, codes c0010 en ligne 1)',
 test('les requêtes de modification sans en-tête applicatif sont refusées (CSRF)', async () => {
   const res = await fetch(`${base}/api/logout`, { method: 'POST' });
   assert.equal(res.status, 403);
+});
+
+test('identifiants de fonction locaux : identifiant EBA stable à l’export, restitué à l’import', async () => {
+  const admin = await login('admin.global');
+  const lei = makeLei('969500BANQUEXMPL01');
+  for (const id of ['BANQ-CRIT-F9', 'F7']) {
+    const r = await admin('/api/records', {
+      method: 'POST',
+      body: { table: 'b_06.01', data: { 'b_06.01.0010': id, 'b_06.01.0020': 'eba_TA:x28', 'b_06.01.0030': `Fonction ${id}`, 'b_06.01.0040': lei } },
+    });
+    assert.equal(r.status, 201);
+  }
+  const exportFunctions = async () => {
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load((await admin('/api/export.xlsx')).body);
+    const ids = [];
+    wb.getWorksheet('b_06.01').eachRow((row, r) => r >= 7 && ids.push(String(row.getCell(2).value)));
+    return { wb, ids };
+  };
+  const first = await exportFunctions();
+  assert.ok(first.ids.every((id) => /^F\d+$/.test(id)), first.ids.join(','));
+  assert.ok(first.ids.includes('F7'), 'un identifiant déjà conforme est conservé');
+  const mapping = (await admin('/api/function-ids')).body;
+  const local = mapping.find((m) => m.local === 'BANQ-CRIT-F9');
+  assert.ok(local && local.eba !== 'F7');
+  assert.deepEqual((await exportFunctions()).ids, first.ids, 'même identifiant d’un export à l’autre');
+
+  const sheet = first.wb.getWorksheet('Identifiants de fonction');
+  assert.equal(sheet.getRow(2).getCell(1).value, local.eba);
+  assert.equal(sheet.getRow(2).getCell(2).value, 'BANQ-CRIT-F9');
+  const parsed = await importWorkbook(await first.wb.xlsx.writeBuffer());
+  assert.ok(parsed.tables['b_06.01'].some((d) => d['b_06.01.0010'] === 'BANQ-CRIT-F9'));
+  assert.ok(!parsed.warnings.some((w) => /Identifiants de fonction/.test(w)));
 });
