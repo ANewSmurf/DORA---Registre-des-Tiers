@@ -1,7 +1,8 @@
 // Interface web du registre d'information DORA (application monopage, sans framework).
 import { checkValue, isEmpty } from './shared/validate.js';
+import { QUALIFICATIONS, QUALIF_BY_CODE, TIERS_CATEGORIES, ID_TYPES, PRESTATION_DOMAINS, STATUSES, STATUS_BY_CODE } from './shared/tiers-model.js';
 
-const state = { me: null, schema: null, tables: {}, issues: [], lists: {} };
+const state = { me: null, schema: null, tables: {}, issues: [], lists: {}, tiers: [], prestations: [] };
 const $app = document.getElementById('app');
 const $modal = document.getElementById('modal-root');
 
@@ -116,8 +117,10 @@ async function loadAll() {
 }
 
 async function refresh() {
-  const [reg, checks, me] = await Promise.all([api('/api/register'), api('/api/checks'), api('/api/me')]);
+  const [reg, checks, me, tiers] = await Promise.all([api('/api/register'), api('/api/checks'), api('/api/me'), api('/api/tiers')]);
   state.tables = reg.tables;
+  state.tiers = tiers.tiers;
+  state.prestations = tiers.prestations;
   state.issues = checks.issues;
   state.me = me;
 }
@@ -157,7 +160,7 @@ function renderLogin(message) {
       h(
         'div',
         { class: 'card' },
-        h('div', { class: 'brand' }, h('img', { src: '/favicon.svg', alt: '' }), h('div', {}, "Registre d'information DORA", h('small', {}, 'Prestataires tiers de services TIC'))),
+        h('div', { class: 'brand' }, h('img', { src: '/favicon.svg', alt: '' }), h('div', {}, 'Registre des tiers', h('small', {}, 'DORA · PECI · PBE · Résolution · ABE'))),
         form,
       ),
     ),
@@ -195,7 +198,7 @@ function toggleMenu() {
 
 // Sections du menu latéral, repliées par défaut ; l'état ouvert/fermé est conservé pendant la session.
 const NAV_SECTIONS = [
-  { key: 'Tiers', label: 'Tiers' },
+  { key: 'Tiers', label: 'Prestataires TIC' },
   { key: 'Contrats', label: 'Contrats' },
   { key: 'Signataire', label: 'Signataire' },
   { key: 'Entités', label: 'Entités' },
@@ -221,42 +224,63 @@ function issuesFor(tbl) {
 }
 
 function shell(content) {
-  if (simpleMode()) return readerShell(content);
   const hash = location.hash || '#/';
   const link = (href, label, extra) =>
     h('a', { href, class: hash === href || (href !== '#/' && hash.startsWith(href + '/')) ? 'active' : '' }, h('span', {}, label), extra);
   const me = state.me;
-  const sidebar = h(
-    'nav',
-    { class: 'sidebar', id: 'sidebar' },
-    h('div', { class: 'brand' }, h('img', { src: '/favicon.svg', alt: '' }), h('div', {}, 'Registre DORA', h('small', {}, 'Registre des tiers TIC'))),
-    h(
-      'div',
-      { class: 'nav' },
-      link('#/', 'Tableau de bord'),
-      isReader() ? h('button', { class: 'btn link small', onclick: () => setDetailView(false) }, '← Revenir à la vue simplifiée') : null,
-      NAV_SECTIONS.map((sec) => {
+  const simple = simpleMode();
+  const count = (n) => h('span', { class: 'code' }, n);
+  let dora;
+  if (simple) {
+    dora = [
+      link('#/dora', 'Synthèse DORA'),
+      link('#/dora/prestataires', 'Prestataires TIC'),
+      link('#/dora/contrats', 'Contrats'),
+      link('#/echanges', 'Exporter'),
+      h('button', { class: 'btn link small nav-toggle', onclick: () => setDetailView(true) }, 'Vue détaillée du registre →'),
+    ];
+  } else {
+    dora = [
+      link('#/dora', 'Tableau de bord DORA'),
+      isReader() ? h('button', { class: 'btn link small nav-toggle', onclick: () => setDetailView(false) }, '← Vue simplifiée du registre') : null,
+      NAV_SECTIONS.filter((sec) => sec.key !== 'Administration').map((sec) => {
         const items = [];
-        if (sec.key === 'Tiers') items.push(link('#/tiers', 'Fiches prestataires', h('span', { class: 'badge' }, (state.tables['b_05.01'] || []).length)));
+        if (sec.key === 'Tiers') items.push(link('#/dora/prestataires', 'Fiches prestataires', h('span', { class: 'badge' }, (state.tables['b_05.01'] || []).length)));
         for (const t of state.schema.tables.filter((x) => x.group === sec.key)) {
           const n = issuesFor(t.code);
           items.push(link(`#/table/${t.code}`, t.title, h('span', { class: n ? 'badge erreur' : 'code' }, n ? `${n} ⚠` : t.code.replace('b_', ''))));
         }
-        if (sec.key === 'Administration') {
-          const errs = state.issues.some((i) => i.level === 'erreur');
-          items.push(link('#/controles', 'Contrôles', h('span', { class: `badge ${errs ? 'erreur' : 'ok'}` }, state.issues.length)));
-          items.push(link('#/echanges', 'Import / export'));
-          if (me.permissions.manageUsers) items.push(link('#/utilisateurs', 'Utilisateurs'), link('#/journal', "Journal d'audit"));
-        }
         return navSection(sec, items);
       }),
+    ];
+  }
+  const admin = [];
+  if (!simple) {
+    const errs = state.issues.some((i) => i.level === 'erreur');
+    admin.push(link('#/controles', 'Contrôles DORA', h('span', { class: `badge ${errs ? 'erreur' : 'ok'}` }, state.issues.length)));
+    admin.push(link('#/echanges', 'Import / export'));
+    if (me.permissions.manageUsers) admin.push(link('#/utilisateurs', 'Utilisateurs'), link('#/journal', "Journal d'audit"));
+  }
+  const sidebar = h(
+    'nav',
+    { class: 'sidebar', id: 'sidebar' },
+    h('div', { class: 'brand' }, h('img', { src: '/favicon.svg', alt: '' }), h('div', {}, 'Registre des tiers', h('small', {}, 'DORA · PECI · PBE · Résolution · ABE'))),
+    h(
+      'div',
+      { class: 'nav' },
+      link('#/', 'Accueil'),
+      link('#/tiers', 'Tiers', count(state.tiers.length)),
+      link('#/prestations', 'Prestations', count(state.prestations.length)),
+      h('div', { class: 'nav-section' }, 'Registre d’information DORA'),
+      dora,
+      admin.length ? [h('div', { class: 'nav-section' }, 'Administration'), admin] : null,
     ),
   );
   const topbar = h(
     'header',
     { class: 'topbar' },
     h('button', { class: 'btn menu-btn', title: 'Afficher / masquer le menu', 'aria-label': 'Afficher ou masquer le menu', onclick: toggleMenu }, '☰'),
-    h('div', { class: 'muted small' }, me.permissions.global ? 'Périmètre : tout le registre' : `Périmètre : ${me.providers.length} prestataire(s) rattaché(s)`),
+    h('div', { class: 'muted small' }, me.permissions.global ? 'Périmètre : tous les tiers' : `Périmètre : ${plural(me.tiersCount || 0, 'tiers rattaché', 'tiers rattachés')}`),
     h(
       'div',
       { class: 'who' },
@@ -288,22 +312,21 @@ function shell(content) {
 function route() {
   if (!state.me) return renderLogin();
   $modal.replaceChildren();
-  const parts = (location.hash || '#/').slice(2).split('/');
-  const [page, arg] = parts;
+  const [page, arg, sub] = (location.hash || '#/').slice(2).split('/').map(decodeURIComponent);
+  const simple = simpleMode();
   let view;
-  if (simpleMode()) {
-    if (!page) view = readerHome();
-    else if (page === 'tiers' && arg) view = readerProvider(Number(arg));
-    else if (page === 'tiers') view = readerProviders();
-    else if (page === 'contrats') view = readerContracts();
-    else if (page === 'echanges') view = readerExport();
-    else view = h('div', { class: 'empty' }, 'Page introuvable.');
-  } else if (!page) view = dashboard();
-  else if (page === 'tiers' && arg) view = providerSheet(Number(arg));
-  else if (page === 'tiers') view = providersList();
+  if (!page) view = homeView();
+  else if (page === 'tiers' && arg) view = tiersPage(Number(arg));
+  else if (page === 'tiers') view = tiersList();
+  else if (page === 'prestations') view = prestationsList(arg);
+  else if (page === 'dora' && !arg) view = simple ? readerHome() : dashboard();
+  else if (page === 'dora' && arg === 'prestataires' && sub) view = simple ? readerProvider(Number(sub)) : providerSheet(Number(sub));
+  else if (page === 'dora' && arg === 'prestataires') view = simple ? readerProviders() : providersList();
+  else if (page === 'dora' && arg === 'contrats') view = readerContracts();
+  else if (page === 'echanges') view = simple ? readerExport() : exchangeView();
+  else if (simple) view = h('div', { class: 'empty' }, 'Page introuvable.');
   else if (page === 'table' && T(arg)) view = tableView(arg);
   else if (page === 'controles') view = checksView();
-  else if (page === 'echanges') view = exchangeView();
   else if (page === 'utilisateurs' && state.me.permissions.manageUsers) view = usersView();
   else if (page === 'journal' && state.me.permissions.manageUsers) view = auditView();
   else view = h('div', { class: 'empty' }, 'Page introuvable.');
@@ -349,7 +372,7 @@ function dashboard() {
     h(
       'div',
       { class: 'grid kpis' },
-      kpi((t['b_05.01'] || []).length, 'Prestataires TIC', '#/tiers'),
+      kpi((t['b_05.01'] || []).length, 'Prestataires TIC', '#/dora/prestataires'),
       kpi((t['b_02.01'] || []).length, 'Accords contractuels', '#/table/b_02.01'),
       kpi(criticalContracts.length, 'Accords soutenant une fonction critique ou importante', '#/table/b_02.02'),
       kpi(totalSpend.toLocaleString('fr-FR', { maximumFractionDigits: 0 }), 'Dépense annuelle déclarée (b_02.01)'),
@@ -403,7 +426,7 @@ function dashboard() {
           { class: 'card' },
           h('h2', {}, 'Vos prestataires rattachés'),
           state.me.providers.length
-            ? h('ul', {}, state.me.providers.map((p) => h('li', {}, h('a', { href: `#/tiers/${p.id}` }, p.name || p.code), ' ', h('span', { class: 'code muted' }, p.code))))
+            ? h('ul', {}, state.me.providers.map((p) => h('li', {}, h('a', { href: `#/dora/prestataires/${p.id}` }, p.name || p.code), ' ', h('span', { class: 'code muted' }, p.code))))
             : h('div', { class: 'empty' }, 'Aucun prestataire ne vous est rattaché. Contactez l’administrateur global.'),
         )
       : null,
@@ -429,7 +452,7 @@ function providersList() {
         const subst = assess.filter((a) => a.data['b_07.01.0020'] === code).map((a) => listLabel('LIST0701050', a.data['b_07.01.0050']));
         return h(
           'tr',
-          { onclick: () => (location.hash = `#/tiers/${p.id}`) },
+          { onclick: () => (location.hash = `#/dora/prestataires/${p.id}`) },
           h('td', {}, h('b', {}, p.data['b_05.01.0030'] || '(sans nom)')),
           h('td', { class: 'code' }, code, ' ', h('span', { class: 'badge' }, p.data['b_05.01.0020'])),
           h('td', {}, fmt(colOf('b_05.01.0050'), p.data['b_05.01.0050'])),
@@ -517,7 +540,7 @@ function providerSheet(id) {
     h(
       'div',
       { class: 'page-head' },
-      h('div', {}, h('a', { href: '#/tiers', class: 'small' }, '← Prestataires TIC'), h('h1', {}, p.data['b_05.01.0030'] || '(sans nom)'), h('div', { class: 'code muted' }, `${type} · ${code}`)),
+      h('div', {}, h('a', { href: '#/dora/prestataires', class: 'small' }, '← Prestataires TIC'), h('h1', {}, p.data['b_05.01.0030'] || '(sans nom)'), h('div', { class: 'code muted' }, `${type} · ${code}`)),
       h(
         'div',
         { class: 'toolbar' },
@@ -985,7 +1008,7 @@ function exchangeView() {
       const r = await api(`/api/import?mode=${mode.value}`, { method: 'POST', body: file.files[0], raw: true });
       await refresh();
       route();
-      toast(`Import terminé : ${Object.values(r.summary).reduce((a, b) => a + b, 0)} ligne(s)`);
+      toast(`Import terminé : ${Object.values(r.summary).reduce((a, b) => a + b, 0)} ligne(s), ${r.tiers.newTiers} nouveau(x) tiers, ${r.tiers.newPrestations} prestation(s) DORA`);
     } catch (e) {
       if (!e.handled) result.replaceChildren(h('div', { class: 'alert error' }, e.message));
     }
@@ -993,14 +1016,44 @@ function exchangeView() {
   return h(
     'div',
     {},
-    h('div', { class: 'page-head' }, h('div', {}, h('h1', {}, 'Import / export'), h('div', { class: 'muted' }, 'Échanges au format du template EBA du registre d’information.'))),
+    h('div', { class: 'page-head' }, h('div', {}, h('h1', {}, 'Import / export'), h('div', { class: 'muted' }, 'Tiers et prestations, et registre d’information DORA au format EBA.'))),
+    h(
+      'div',
+      { class: 'card' },
+      h('h2', {}, 'Tiers et prestations'),
+      h('p', {}, 'Un classeur avec un onglet Tiers et un onglet Prestations, et une colonne par qualification (DORA, PECI, PBE, Résolution, Externalisation ABE).'),
+      h(
+        'div',
+        { class: 'toolbar' },
+        h('a', { class: 'btn primary', href: '/api/tiers/export.xlsx' }, 'Télécharger les tiers (.xlsx)'),
+        canImp
+          ? h(
+              'button',
+              {
+                class: 'btn',
+                onclick: async () => {
+                  try {
+                    const r = await api('/api/tiers/sync-dora', { method: 'POST' });
+                    await reloadAndRender();
+                    toast(`Reprise du registre DORA : ${r.newTiers} tiers créé(s), ${r.linkedTiers} relié(s), ${r.newPrestations} prestation(s)`);
+                  } catch (e) {
+                    if (!e.handled) toast(e.message);
+                  }
+                },
+              },
+              'Reprendre les prestataires du registre DORA',
+            )
+          : null,
+      ),
+      canImp ? h('p', { class: 'muted small' }, 'Chaque prestataire TIC du registre devient un tiers et chaque accord une prestation qualifiée DORA. C’est fait automatiquement après chaque import du registre ; les tiers existants ne sont pas modifiés.') : null,
+    ),
     h(
       'div',
       { class: 'grid two' },
       h(
         'div',
         { class: 'card' },
-        h('h2', {}, 'Exporter le registre'),
+        h('h2', {}, 'Exporter le registre DORA'),
         h('p', {}, 'Génère un classeur Excel reprenant la structure du template : un onglet par tableau (b_01.01 à b_07.01), codes colonnes en ligne 4, libellés en ligne 5, types en ligne 6, données à partir de la ligne 7, listes de valeurs EBA dans l’onglet « Drop down ».'),
         h('p', { class: 'muted small' }, state.me.permissions.global ? 'L’export contient l’ensemble du registre.' : 'L’export est limité à vos prestataires rattachés et au référentiel.'),
         h('a', { class: 'btn primary', href: '/api/export.xlsx' }, 'Télécharger le registre (.xlsx)'),
@@ -1008,7 +1061,7 @@ function exchangeView() {
       h(
         'div',
         { class: 'card' },
-        h('h2', {}, 'Importer un registre'),
+        h('h2', {}, 'Importer un registre DORA'),
         canImp
           ? [
               h('p', {}, 'Importez un classeur .xlsx au format du template (par exemple le template EBA rempli puis enregistré au format .xlsx, ou un export de cette application) ou au format de remise EBA (onglets b_01_02, b_05_01… avec les codes c0010, c0020… en première ligne). Les listes de valeurs acceptent le code EBA ou le libellé.'),
@@ -1044,6 +1097,7 @@ function usersView() {
   api('/api/users')
     .then((users) => {
       const providers = Object.fromEntries((state.tables['b_05.01'] || []).map((p) => [p.id, p.data['b_05.01.0030'] || p.data['b_05.01.0010']]));
+      const tiersNames = Object.fromEntries(state.tiers.map((t) => [t.id, t.data.name]));
       out.replaceChildren(
         h(
           'div',
@@ -1051,7 +1105,7 @@ function usersView() {
           h(
             'table',
             { class: 'data' },
-            h('thead', {}, h('tr', {}, ['Identifiant', 'Nom', 'Profil', 'Prestataires rattachés', 'Statut'].map((x) => h('th', {}, x)))),
+            h('thead', {}, h('tr', {}, ['Identifiant', 'Nom', 'Profil', 'Rattachements', 'Statut'].map((x) => h('th', {}, x)))),
             h(
               'tbody',
               {},
@@ -1062,7 +1116,7 @@ function usersView() {
                   h('td', { class: 'code' }, u.username),
                   h('td', {}, u.displayName),
                   h('td', {}, h('span', { class: 'badge role' }, ROLE_LABELS[u.role])),
-                  h('td', {}, u.role.startsWith('tiers') ? u.providerIds.map((id) => providers[id] || `#${id}`).join(', ') || h('span', { class: 'badge erreur' }, 'aucun') : h('span', { class: 'muted' }, 'tout le registre')),
+                  h('td', {}, u.role.startsWith('tiers') ? [...new Set([...u.tiersIds.map((id) => tiersNames[id]), ...u.providerIds.map((id) => providers[id])].filter(Boolean))].join(', ') || h('span', { class: 'badge erreur' }, 'aucun') : h('span', { class: 'muted' }, 'tous les tiers')),
                   h('td', {}, u.active ? h('span', { class: 'badge ok' }, 'actif') : h('span', { class: 'badge' }, 'désactivé')),
                 ),
               ),
@@ -1098,7 +1152,7 @@ function userModal(user) {
   const provBox = h(
     'div',
     { class: 'field' },
-    h('label', {}, 'Prestataires TIC rattachés'),
+    h('label', {}, 'Prestataires TIC rattachés (registre DORA)'),
     providers.length
       ? h(
           'div',
@@ -1115,9 +1169,34 @@ function userModal(user) {
         )
       : h('div', { class: 'muted' }, 'Aucun prestataire dans le registre.'),
   );
+  const selectedTiers = new Set(user?.tiersIds || []);
+  const tiersBox = h(
+    'div',
+    { class: 'field' },
+    h('label', {}, 'Tiers rattachés'),
+    h('div', { class: 'meta' }, 'Les tiers liés aux prestataires TIC cochés ci-dessus sont rattachés automatiquement.'),
+    state.tiers.length
+      ? h(
+          'div',
+          { class: 'checks' },
+          [...state.tiers]
+            .sort((a, b) => a.data.name.localeCompare(b.data.name, 'fr'))
+            .map((t) =>
+              h(
+                'label',
+                {},
+                h('input', { type: 'checkbox', checked: selectedTiers.has(t.id), onchange: (e) => (e.target.checked ? selectedTiers.add(t.id) : selectedTiers.delete(t.id)) }),
+                t.data.name,
+                t.data.doraCode ? h('span', { class: 'qchip q-blue small' }, 'DORA') : null,
+              ),
+            ),
+        )
+      : h('div', { class: 'muted' }, 'Aucun tiers.'),
+  );
   const help = h('div', { class: 'alert info' });
   const syncRole = () => {
     provBox.hidden = !role.value.startsWith('tiers');
+    tiersBox.hidden = provBox.hidden;
     help.textContent = ROLE_HELP[role.value];
   };
   role.addEventListener('change', syncRole);
@@ -1140,6 +1219,7 @@ function userModal(user) {
         h('div', { class: 'field' }, h('label', {}, 'Nom affiché'), displayName),
         h('div', { class: 'field' }, h('label', {}, 'Profil'), role),
         help,
+        tiersBox,
         provBox,
         h('div', { class: 'field' }, h('label', {}, user ? 'Réinitialiser le mot de passe' : 'Mot de passe initial'), password),
         h('label', {}, active, ' Compte actif'),
@@ -1172,7 +1252,7 @@ function userModal(user) {
         {
           class: 'btn primary',
           onclick: async () => {
-            const body = { displayName: displayName.value, role: role.value, active: active.checked, providerIds: [...selected] };
+            const body = { displayName: displayName.value, role: role.value, active: active.checked, providerIds: [...selected], tiersIds: [...selectedTiers] };
             if (password.value) body.password = password.value;
             try {
               if (user) await api(`/api/users/${user.id}`, { method: 'PUT', body });
@@ -1243,7 +1323,7 @@ function setDetailView(on) {
   } catch {
     // stockage indisponible : la vue simplifiée reste active
   }
-  location.hash = '#/';
+  location.hash = '#/dora';
   route();
 }
 
@@ -1369,56 +1449,10 @@ function providerBadges(p) {
   ];
 }
 
-function readerShell(content) {
-  const hash = location.hash || '#/';
-  const me = state.me;
-  const link = (href, label) => h('a', { href, class: hash === href || (href !== '#/' && hash.startsWith(href)) ? 'active' : '' }, h('span', {}, label));
-  const sidebar = h(
-    'nav',
-    { class: 'sidebar', id: 'sidebar' },
-    h('div', { class: 'brand' }, h('img', { src: '/favicon.svg', alt: '' }), h('div', {}, 'Registre DORA', h('small', {}, 'Prestataires informatiques'))),
-    h('div', { class: 'nav' }, link('#/', 'Synthèse'), link('#/tiers', 'Prestataires'), link('#/contrats', 'Contrats'), link('#/echanges', 'Exporter')),
-    h(
-      'div',
-      { class: 'nav-foot' },
-      h('p', { class: 'muted small' }, 'Besoin du détail au format du registre EBA ?'),
-      h('button', { class: 'btn link small', onclick: () => setDetailView(true) }, 'Afficher la vue détaillée →'),
-    ),
-  );
-  const topbar = h(
-    'header',
-    { class: 'topbar' },
-    h('button', { class: 'btn menu-btn', title: 'Afficher / masquer le menu', 'aria-label': 'Afficher ou masquer le menu', onclick: toggleMenu }, '☰'),
-    h('div', { class: 'muted small' }, me.permissions.global ? 'Vous consultez tous les prestataires' : `Vous consultez ${plural(me.providers.length, 'prestataire', 'prestataires')}`),
-    h(
-      'div',
-      { class: 'who' },
-      h('span', {}, me.displayName),
-      h('span', { class: 'badge role' }, me.roleLabel),
-      h('button', { class: 'btn link', onclick: passwordModal }, 'Mot de passe'),
-      h(
-        'button',
-        {
-          class: 'btn',
-          onclick: async () => {
-            await api('/api/logout', { method: 'POST' });
-            state.me = null;
-            location.hash = '#/';
-            renderLogin();
-          },
-        },
-        'Déconnexion',
-      ),
-    ),
-  );
-  sidebar.addEventListener('click', (e) => e.target.closest('a') && sidebar.classList.remove('open'));
-  $app.replaceChildren(h('div', { class: `layout${menuCollapsed() ? ' collapsed' : ''}` }, sidebar, h('div', { class: 'main' }, topbar, h('main', { class: 'content reader' }, content))));
-}
-
 function providerCard(p) {
   return h(
     'a',
-    { class: 'pcard', href: `#/tiers/${p.id}` },
+    { class: 'pcard', href: `#/dora/prestataires/${p.id}` },
     h('div', { class: 'pcard-head' }, h('b', {}, p.name), h('span', { class: 'muted small' }, L('LISTCOUNTRY', p.country))),
     h('div', { class: 'pcard-badges' }, providerBadges(p)),
     h(
@@ -1443,14 +1477,14 @@ function readerHome() {
   return h(
     'div',
     {},
-    h('div', { class: 'page-head' }, h('div', {}, h('h1', {}, `Bonjour ${state.me.displayName}`), h('div', { class: 'muted' }, 'Voici l’essentiel sur les prestataires informatiques que vous suivez.'))),
+    h('div', { class: 'page-head' }, h('div', {}, h('h1', {}, 'Synthèse DORA'), h('div', { class: 'muted' }, 'L’essentiel sur les prestataires informatiques du registre d’information DORA.'))),
     h(
       'div',
       { class: 'grid kpis' },
-      kpi(providers.length, 'Prestataires', '#/tiers'),
-      kpi(active.length, 'Contrats en cours', '#/contrats'),
-      kpi(providers.filter((p) => p.critical).length, 'Prestataires soutenant une fonction critique', '#/tiers'),
-      kpi(expiring.length, 'Contrats arrivant à échéance dans les 6 mois', '#/contrats'),
+      kpi(providers.length, 'Prestataires', '#/dora/prestataires'),
+      kpi(active.length, 'Contrats en cours', '#/dora/contrats'),
+      kpi(providers.filter((p) => p.critical).length, 'Prestataires soutenant une fonction critique', '#/dora/prestataires'),
+      kpi(expiring.length, 'Contrats arrivant à échéance dans les 6 mois', '#/dora/contrats'),
     ),
     h(
       'div',
@@ -1460,7 +1494,7 @@ function readerHome() {
         { class: 'card' },
         h('h2', {}, 'Points d’attention'),
         attention.length
-          ? h('ul', { class: 'plain' }, attention.map((p) => h('li', {}, h('a', { href: `#/tiers/${p.id}` }, p.name), h('div', { class: 'muted small' }, `Fonction critique : ${why(p)}`))))
+          ? h('ul', { class: 'plain' }, attention.map((p) => h('li', {}, h('a', { href: `#/dora/prestataires/${p.id}` }, p.name), h('div', { class: 'muted small' }, `Fonction critique : ${why(p)}`))))
           : h('div', { class: 'empty' }, 'Aucun point d’attention sur les prestataires critiques.'),
       ),
       h(
@@ -1510,7 +1544,7 @@ function readerProvider(id) {
     h(
       'div',
       { class: 'page-head' },
-      h('div', {}, h('a', { href: '#/tiers', class: 'small' }, '← Prestataires'), h('h1', {}, p.name), h('div', { class: 'pcard-badges' }, providerBadges(p))),
+      h('div', {}, h('a', { href: '#/dora/prestataires', class: 'small' }, '← Prestataires'), h('h1', {}, p.name), h('div', { class: 'pcard-badges' }, providerBadges(p))),
     ),
     h(
       'div',
@@ -1603,7 +1637,7 @@ function readerContracts() {
         const pid = providersById.get(c.providerCode);
         return h(
           'tr',
-          { onclick: () => pid && (location.hash = `#/tiers/${pid}`) },
+          { onclick: () => pid && (location.hash = `#/dora/prestataires/${pid}`) },
           h('td', {}, h('b', {}, c.providerName), h('div', { class: 'muted small' }, c.ref)),
           h('td', {}, [...c.services].map((s) => L('LISTANNEXIII', s)).join(', ')),
           h('td', {}, [...c.functions.values()].map((f) => f.name).join(', '), c.critical ? [' ', h('span', { class: 'badge erreur' }, 'critique')] : null),
@@ -1635,9 +1669,584 @@ function readerExport() {
       { class: 'card' },
       h('p', {}, 'Téléchargez les informations que vous consultez dans un fichier Excel au format officiel du registre d’information DORA.'),
       h('p', { class: 'muted small' }, state.me.permissions.global ? 'Le fichier contient l’ensemble du registre.' : 'Le fichier est limité à vos prestataires.'),
-      h('a', { class: 'btn primary', href: '/api/export.xlsx' }, 'Télécharger le fichier Excel'),
+      h('div', { class: 'toolbar' }, h('a', { class: 'btn primary', href: '/api/export.xlsx' }, 'Télécharger le registre DORA'), h('a', { class: 'btn', href: '/api/tiers/export.xlsx' }, 'Télécharger les tiers et prestations')),
     ),
   );
+}
+
+// ---------------------------------------------------------------------------------------
+// Tiers et prestations (tous les tiers, DORA ou non)
+// ---------------------------------------------------------------------------------------
+const AVATAR_COLORS = ['blue', 'green', 'purple', 'orange', 'teal', 'red'];
+
+function initials(name) {
+  const words = String(name || '?').replace(/[^\p{L}\p{N} ]/gu, ' ').split(/\s+/).filter(Boolean);
+  return ((words[0]?.[0] || '?') + (words[1]?.[0] || '')).toUpperCase();
+}
+function avatar(name, big) {
+  let hsh = 0;
+  for (const ch of String(name)) hsh = (hsh * 31 + ch.codePointAt(0)) >>> 0;
+  return h('span', { class: `avatar a-${AVATAR_COLORS[hsh % AVATAR_COLORS.length]}${big ? ' big' : ''}`, 'aria-hidden': 'true' }, initials(name));
+}
+function countryName(cc) {
+  if (!cc) return '';
+  try {
+    return regionNames?.of(cc) || cc;
+  } catch {
+    return cc;
+  }
+}
+
+/** Pastille d'une qualification ; ★ quand la prestation est marquée critique pour cette qualification. */
+function qChip(code, critical, opts = {}) {
+  const q = QUALIF_BY_CODE[code];
+  return h('span', { class: `qchip q-${q.color}${opts.small ? ' small' : ''}`, title: critical && q.criticalLabel ? `${q.name} – ${q.criticalLabel}` : q.name }, critical ? '★ ' : '', q.label);
+}
+const qualifCodes = (p) => QUALIFICATIONS.map((q) => q.code).filter((c) => p.data.qualifications?.[c]);
+const isCritical = (p) => !!p.data.qualifications?.PECI || Object.values(p.data.qualifications || {}).some((v) => v.critical);
+function prestaChips(p, small) {
+  const codes = qualifCodes(p);
+  return codes.length ? codes.map((c) => qChip(c, p.data.qualifications[c].critical, { small })) : h('span', { class: 'qchip q-none' + (small ? ' small' : '') }, 'Non qualifiée');
+}
+
+/** Tiers enrichis de leurs prestations et qualifications cumulées. */
+function tiersModels() {
+  const byTiers = new Map();
+  for (const p of state.prestations) (byTiers.get(p.tiers_id) || byTiers.set(p.tiers_id, []).get(p.tiers_id)).push(p);
+  return state.tiers
+    .map((t) => {
+      const prestations = byTiers.get(t.id) || [];
+      const quals = new Map();
+      for (const p of prestations) for (const c of qualifCodes(p)) quals.set(c, quals.get(c) || !!p.data.qualifications[c].critical);
+      const active = prestations.filter((p) => p.data.status !== 'terminee');
+      const cost = active.reduce((a, p) => a + (Number(p.data.annualCost) || 0), 0);
+      return { ...t, prestations, quals, cost, critical: prestations.some(isCritical) };
+    })
+    .sort((a, b) => a.data.name.localeCompare(b.data.name, 'fr'));
+}
+function tiersChips(t, small) {
+  return t.quals.size
+    ? QUALIFICATIONS.filter((q) => t.quals.has(q.code)).map((q) => qChip(q.code, t.quals.get(q.code), { small }))
+    : h('span', { class: 'qchip q-none' + (small ? ' small' : '') }, t.prestations.length ? 'Non qualifié' : 'Aucune prestation');
+}
+
+const tiersById = (id) => state.tiers.find((t) => t.id === id);
+const euros = (v) => (isEmpty(v) || !Number(v) ? '—' : Number(v).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }));
+const reviewDue = (p) => p.data.status !== 'terminee' && p.data.nextReview && p.data.nextReview <= inDays(30);
+const endingSoon = (p) => p.data.status !== 'terminee' && p.data.end && p.data.end >= today() && p.data.end <= inDays(180);
+
+function homeView() {
+  const tiers = tiersModels();
+  const prestations = state.prestations;
+  const live = prestations.filter((p) => p.data.status !== 'terminee');
+  const unqualified = live.filter((p) => !qualifCodes(p).length);
+  const due = live.filter(reviewDue).sort((a, b) => a.data.nextReview.localeCompare(b.data.nextReview));
+  const ending = live.filter(endingSoon).sort((a, b) => a.data.end.localeCompare(b.data.end));
+  const combos = new Map();
+  for (const p of live) {
+    const codes = qualifCodes(p);
+    if (codes.length > 1) {
+      const key = codes.map((c) => QUALIF_BY_CODE[c].label).join(' + ');
+      combos.set(key, (combos.get(key) || 0) + 1);
+    }
+  }
+  const search = h('input', {
+    class: 'search hero-search',
+    type: 'search',
+    placeholder: 'Rechercher un tiers ou une prestation…',
+    onkeydown: (e) => {
+      if (e.key === 'Enter') {
+        tiersFilter.q = search.value;
+        location.hash = '#/tiers';
+      }
+    },
+  });
+  const qTile = (q) => {
+    const ps = live.filter((p) => p.data.qualifications?.[q.code]);
+    const nTiers = new Set(ps.map((p) => p.tiers_id)).size;
+    const crit = ps.filter((p) => p.data.qualifications[q.code].critical).length;
+    return h(
+      'a',
+      { class: `qtile q-${q.color}`, href: `#/prestations/${q.code}` },
+      h('div', { class: 'qtile-head' }, h('span', { class: 'qtile-label' }, q.label), h('span', { class: 'qtile-n' }, ps.length)),
+      h('div', { class: 'qtile-name' }, q.name),
+      h('div', { class: 'muted small' }, plural(nTiers, 'tiers', 'tiers'), q.criticalLabel && crit ? ` · ${crit} critique${crit > 1 ? 's' : ''}` : ''),
+    );
+  };
+  const todo = (title, list, render, empty) =>
+    h('div', { class: 'card' }, h('h2', {}, title, ' ', h('span', { class: `badge ${list.length ? 'incomplet' : 'ok'}` }, list.length)), list.length ? h('ul', { class: 'plain' }, list.slice(0, 6).map(render)) : h('div', { class: 'empty small' }, empty));
+  const prestaLine = (p, extra) =>
+    h('li', {}, h('a', { href: `#/tiers/${p.tiers_id}` }, p.data.title), h('div', { class: 'muted small' }, tiersById(p.tiers_id)?.data.name, extra ? ` · ${extra}` : ''));
+  const recent = [...tiers].sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || '')).slice(0, 5);
+  return h(
+    'div',
+    {},
+    h(
+      'div',
+      { class: 'hero' },
+      h('div', {}, h('h1', {}, `Bonjour ${state.me.displayName}`), h('p', {}, `${plural(tiers.length, 'tiers', 'tiers')} et ${plural(live.length, 'prestation en cours', 'prestations en cours')} dans votre périmètre.`)),
+      h('div', { class: 'hero-actions' }, search, state.me.permissions.createTiers ? h('button', { class: 'btn primary', onclick: () => tiersModal(null) }, '+ Nouveau tiers') : null),
+    ),
+    h('h2', { class: 'section-title' }, 'Prestations par qualification'),
+    h('div', { class: 'qtiles' }, QUALIFICATIONS.map(qTile), h('a', { class: 'qtile q-none', href: '#/prestations/aucune' }, h('div', { class: 'qtile-head' }, h('span', { class: 'qtile-label' }, 'À qualifier'), h('span', { class: 'qtile-n' }, unqualified.length)), h('div', { class: 'qtile-name' }, 'Prestations sans qualification'), h('div', { class: 'muted small' }, 'à examiner'))),
+    h(
+      'div',
+      { class: 'grid three', style: 'margin-top:16px' },
+      todo('Revues à mener', due, (p) => prestaLine(p, `revue ${frDate(p.data.nextReview)}`), 'Aucune revue prévue dans les 30 jours.'),
+      todo('Échéances dans les 6 mois', ending, (p) => prestaLine(p, `fin ${frDate(p.data.end)}`), 'Aucune prestation n’arrive à échéance.'),
+      h(
+        'div',
+        { class: 'card' },
+        h('h2', {}, 'Cumuls de qualifications'),
+        combos.size
+          ? h('ul', { class: 'plain' }, [...combos].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k, n]) => h('li', { class: 'row' }, h('span', {}, k), h('b', {}, n))))
+          : h('div', { class: 'empty small' }, 'Aucune prestation ne cumule plusieurs qualifications.'),
+        h('p', { class: 'muted small' }, 'Une même prestation peut relever de plusieurs réglementations.'),
+      ),
+    ),
+    h(
+      'div',
+      { class: 'page-head', style: 'margin-top:8px' },
+      h('h2', { class: 'section-title' }, 'Tiers récemment mis à jour'),
+      h('a', { href: '#/tiers' }, 'Voir tous les tiers →'),
+    ),
+    recent.length ? h('div', { class: 'tcards' }, recent.map(tiersCard)) : h('div', { class: 'card empty' }, 'Aucun tiers pour le moment.'),
+  );
+}
+
+function tiersCard(t) {
+  const d = t.data;
+  return h(
+    'a',
+    { class: 'tcard', href: `#/tiers/${t.id}` },
+    h('div', { class: 'tcard-head' }, avatar(d.name), h('div', { class: 'tcard-title' }, h('b', {}, d.name), h('div', { class: 'muted small' }, [d.category, countryName(d.country)].filter(Boolean).join(' · ') || '—'))),
+    h('div', { class: 'chips' }, tiersChips(t, true)),
+    h('div', { class: 'tcard-foot muted small' }, h('span', {}, plural(t.prestations.length, 'prestation', 'prestations')), h('span', {}, t.cost ? `${euros(t.cost)} / an` : '')),
+  );
+}
+
+const tiersFilter = { q: '', qual: '', category: '' };
+
+function filterChips(current, onPick, withNone) {
+  const chip = (code, label, color) =>
+    h('button', { class: `fchip${color ? ` q-${color}` : ''}${current() === code ? ' on' : ''}`, onclick: () => onPick(code) }, label);
+  return h('div', { class: 'fchips' }, chip('', 'Toutes'), QUALIFICATIONS.map((q) => chip(q.code, q.label, q.color)), withNone ? chip('aucune', 'Sans qualification', 'none') : null);
+}
+
+function tiersList() {
+  const all = tiersModels();
+  const search = h('input', { class: 'search', type: 'search', placeholder: 'Rechercher un tiers…', value: tiersFilter.q });
+  const category = h('select', {}, h('option', { value: '' }, 'Toutes les catégories'), TIERS_CATEGORIES.map((c) => h('option', { value: c }, c)));
+  category.value = tiersFilter.category;
+  const grid = h('div', { class: 'tcards' });
+  const chipsBox = h('div');
+  const info = h('div', { class: 'muted small' });
+  const draw = () => {
+    const q = tiersFilter.q.toLowerCase();
+    const list = all.filter(
+      (t) =>
+        (!q || `${t.data.name} ${t.data.identifier} ${t.prestations.map((p) => p.data.title).join(' ')}`.toLowerCase().includes(q)) &&
+        (!tiersFilter.category || t.data.category === tiersFilter.category) &&
+        (!tiersFilter.qual || (tiersFilter.qual === 'aucune' ? !t.quals.size : t.quals.has(tiersFilter.qual))),
+    );
+    chipsBox.replaceChildren(filterChips(() => tiersFilter.qual, (c) => ((tiersFilter.qual = c), draw()), true));
+    info.textContent = `${plural(list.length, 'tiers affiché', 'tiers affichés')} sur ${all.length}`;
+    grid.replaceChildren(...(list.length ? list.map(tiersCard) : [h('div', { class: 'card empty' }, 'Aucun tiers ne correspond à ces critères.')]));
+  };
+  search.addEventListener('input', () => ((tiersFilter.q = search.value), draw()));
+  category.addEventListener('change', () => ((tiersFilter.category = category.value), draw()));
+  draw();
+  return h(
+    'div',
+    {},
+    h(
+      'div',
+      { class: 'page-head' },
+      h('div', {}, h('h1', {}, 'Tiers'), h('div', { class: 'muted' }, 'Toutes les entreprises qui fournissent une prestation, qu’elle relève de DORA ou non.')),
+      h(
+        'div',
+        { class: 'toolbar' },
+        h('a', { class: 'btn', href: '/api/tiers/export.xlsx' }, 'Exporter (.xlsx)'),
+        state.me.permissions.createTiers ? h('button', { class: 'btn primary', onclick: () => tiersModal(null) }, '+ Nouveau tiers') : null,
+      ),
+    ),
+    h('div', { class: 'filters' }, h('div', { class: 'toolbar' }, search, category, info), chipsBox),
+    grid,
+  );
+}
+
+function tiersPage(id) {
+  const t = tiersModels().find((x) => x.id === id);
+  if (!t) return h('div', { class: 'empty' }, 'Tiers introuvable ou hors de votre périmètre.');
+  const d = t.data;
+  const doraProvider = d.doraCode ? (state.tables['b_05.01'] || []).find((r) => r.data['b_05.01.0010'] === d.doraCode) : null;
+  const item = (label, value) => [h('dt', {}, label), h('dd', {}, value || '—')];
+  const sorted = [...t.prestations].sort((a, b) => (a.data.status === 'terminee') - (b.data.status === 'terminee') || a.data.title.localeCompare(b.data.title, 'fr'));
+  return h(
+    'div',
+    {},
+    h('a', { href: '#/tiers', class: 'small' }, '← Tous les tiers'),
+    h(
+      'div',
+      { class: 'tiers-hero' },
+      avatar(d.name, true),
+      h(
+        'div',
+        { class: 'tiers-hero-body' },
+        h('h1', {}, d.name),
+        h('div', { class: 'muted' }, [d.category, countryName(d.country), d.identifier ? `${d.idType || 'Identifiant'} ${d.identifier}` : null].filter(Boolean).join(' · ')),
+        h('div', { class: 'chips', style: 'margin-top:8px' }, tiersChips(t)),
+      ),
+      h(
+        'div',
+        { class: 'toolbar' },
+        doraProvider ? h('a', { class: 'btn', href: `#/dora/prestataires/${doraProvider.id}` }, 'Fiche registre DORA') : null,
+        t.editable ? h('button', { class: 'btn', onclick: () => tiersModal(t) }, 'Modifier') : null,
+        state.me.role === 'global_admin'
+          ? h(
+              'button',
+              {
+                class: 'btn danger',
+                onclick: async () => {
+                  if (!confirm(`Supprimer le tiers « ${d.name} » et ses ${t.prestations.length} prestation(s) ?`)) return;
+                  try {
+                    await api(`/api/tiers/${t.id}`, { method: 'DELETE' });
+                    toast('Tiers supprimé');
+                    location.hash = '#/tiers';
+                    await reloadAndRender();
+                  } catch (e) {
+                    if (!e.handled) toast(e.message);
+                  }
+                },
+              },
+              'Supprimer',
+            )
+          : null,
+      ),
+    ),
+    h(
+      'div',
+      { class: 'tiers-layout' },
+      h(
+        'div',
+        {},
+        h(
+          'div',
+          { class: 'page-head' },
+          h('h2', { class: 'section-title' }, `Prestations (${t.prestations.length})`),
+          t.editable ? h('button', { class: 'btn primary', onclick: () => prestationModal(t.id, null) }, '+ Ajouter une prestation') : null,
+        ),
+        sorted.length ? sorted.map((p) => prestationCard(p, t.editable)) : h('div', { class: 'card empty' }, 'Aucune prestation pour ce tiers.'),
+      ),
+      h(
+        'div',
+        {},
+        h(
+          'div',
+          { class: 'card' },
+          h('h2', {}, 'Informations'),
+          h(
+            'dl',
+            { class: 'dl' },
+            item('Catégorie', d.category),
+            item('Identifiant', d.identifier ? `${d.identifier}${d.idType ? ` (${d.idType})` : ''}` : ''),
+            item('Pays', countryName(d.country)),
+            item('Groupe', d.group),
+            item('Contact', d.contactName),
+            item('E-mail', d.contactEmail ? h('a', { href: `mailto:${d.contactEmail}` }, d.contactEmail) : ''),
+            item('Coût annuel', t.cost ? euros(t.cost) : ''),
+            item('Registre DORA', doraProvider ? 'Prestataire TIC déclaré' : d.doraCode ? `Code ${d.doraCode}` : 'Non déclaré'),
+          ),
+          d.notes ? h('p', { class: 'notes' }, d.notes) : null,
+        ),
+      ),
+    ),
+  );
+}
+
+function prestationCard(p, editable) {
+  const d = p.data;
+  const st = STATUS_BY_CODE[d.status] || STATUS_BY_CODE.active;
+  const notes = qualifCodes(p).filter((c) => d.qualifications[c].note).map((c) => h('div', { class: 'small' }, h('b', {}, `${QUALIF_BY_CODE[c].label} : `), d.qualifications[c].note));
+  const fact = (label, value) => (value ? h('div', { class: 'fact' }, h('span', { class: 'muted small' }, label), h('span', {}, value)) : null);
+  return h(
+    'div',
+    { class: `card presta${d.status === 'terminee' ? ' ended' : ''}` },
+    h(
+      'div',
+      { class: 'presta-head' },
+      h('div', {}, h('h3', {}, d.title), h('div', { class: 'muted small' }, [d.domain, d.entity].filter(Boolean).join(' · '))),
+      h('span', { class: `badge ${st.cls}` }, st.label),
+    ),
+    h('div', { class: 'chips' }, prestaChips(p)),
+    d.description ? h('p', { class: 'small' }, d.description) : null,
+    h(
+      'div',
+      { class: 'facts' },
+      fact('Période', d.start || d.end ? `${d.start ? frDate(d.start) : '…'} → ${d.end ? frDate(d.end) : 'sans échéance'}` : ''),
+      fact('Responsable', d.owner),
+      fact('Coût annuel', d.annualCost ? euros(d.annualCost) : ''),
+      fact('Prochaine revue', d.nextReview ? h('span', { class: reviewDue(p) ? 'due' : '' }, frDate(d.nextReview)) : ''),
+      fact('Contrat DORA', d.doraContract),
+    ),
+    notes.length ? h('div', { class: 'qnotes' }, notes) : null,
+    editable
+      ? h(
+          'div',
+          { class: 'presta-actions' },
+          h('button', { class: 'btn small-btn', onclick: () => prestationModal(p.tiers_id, p) }, 'Modifier'),
+          h(
+            'button',
+            {
+              class: 'btn link small',
+              onclick: async () => {
+                if (!confirm(`Supprimer la prestation « ${d.title} » ?`)) return;
+                try {
+                  await api(`/api/prestations/${p.id}`, { method: 'DELETE' });
+                  toast('Prestation supprimée');
+                  await reloadAndRender();
+                } catch (e) {
+                  if (!e.handled) toast(e.message);
+                }
+              },
+            },
+            'Supprimer',
+          ),
+        )
+      : null,
+  );
+}
+
+const prestaFilter = { q: '', status: 'live' };
+
+function prestationsList(qualArg) {
+  const qual = { v: qualArg || '' };
+  const names = new Map(state.tiers.map((t) => [t.id, t.data.name]));
+  const search = h('input', { class: 'search', type: 'search', placeholder: 'Rechercher…', value: prestaFilter.q });
+  const status = h('select', {}, h('option', { value: 'live' }, 'En cours et en projet'), h('option', { value: '' }, 'Tous les statuts'), STATUSES.map((s) => h('option', { value: s.code }, s.label)));
+  status.value = prestaFilter.status;
+  const chipsBox = h('div');
+  const tbody = h('tbody');
+  const info = h('div', { class: 'muted small' });
+  const draw = () => {
+    const q = prestaFilter.q.toLowerCase();
+    const list = state.prestations
+      .filter(
+        (p) =>
+          (!q || `${p.data.title} ${names.get(p.tiers_id)} ${p.data.domain} ${p.data.entity} ${p.data.owner}`.toLowerCase().includes(q)) &&
+          (prestaFilter.status === 'live' ? p.data.status !== 'terminee' : !prestaFilter.status || p.data.status === prestaFilter.status) &&
+          (!qual.v || (qual.v === 'aucune' ? !qualifCodes(p).length : p.data.qualifications?.[qual.v])),
+      )
+      .sort((a, b) => (names.get(a.tiers_id) || '').localeCompare(names.get(b.tiers_id) || '', 'fr') || a.data.title.localeCompare(b.data.title, 'fr'));
+    chipsBox.replaceChildren(filterChips(() => qual.v, (c) => ((qual.v = c), history.replaceState(null, '', c ? `#/prestations/${c}` : '#/prestations'), draw()), true));
+    info.textContent = plural(list.length, 'prestation', 'prestations');
+    tbody.replaceChildren(
+      ...list.map((p) => {
+        const st = STATUS_BY_CODE[p.data.status] || STATUS_BY_CODE.active;
+        return h(
+          'tr',
+          { onclick: () => (location.hash = `#/tiers/${p.tiers_id}`) },
+          h('td', {}, h('b', {}, p.data.title), h('div', { class: 'muted small' }, [p.data.domain, p.data.entity].filter(Boolean).join(' · '))),
+          h('td', {}, h('span', { class: 'tiers-cell' }, avatar(names.get(p.tiers_id) || '?'), names.get(p.tiers_id))),
+          h('td', {}, h('div', { class: 'chips' }, prestaChips(p, true))),
+          h('td', {}, p.data.end ? frDate(p.data.end) : '—'),
+          h('td', {}, h('span', { class: `badge ${st.cls}` }, st.label)),
+        );
+      }),
+    );
+    if (!list.length) tbody.append(h('tr', {}, h('td', { colspan: 5, class: 'empty' }, 'Aucune prestation ne correspond à ces critères.')));
+  };
+  search.addEventListener('input', () => ((prestaFilter.q = search.value), draw()));
+  status.addEventListener('change', () => ((prestaFilter.status = status.value), draw()));
+  draw();
+  return h(
+    'div',
+    {},
+    h(
+      'div',
+      { class: 'page-head' },
+      h('div', {}, h('h1', {}, 'Prestations'), h('div', { class: 'muted' }, 'Chaque prestation porte ses qualifications : DORA, PECI, PBE, Résolution, Externalisation ABE.')),
+      h('a', { class: 'btn', href: '/api/tiers/export.xlsx' }, 'Exporter (.xlsx)'),
+    ),
+    h('div', { class: 'filters' }, h('div', { class: 'toolbar' }, search, status, info), chipsBox),
+    h('div', { class: 'table-wrap' }, h('table', { class: 'data' }, h('thead', {}, h('tr', {}, ['Prestation', 'Tiers', 'Qualifications', 'Fin', 'Statut'].map((x) => h('th', {}, x)))), tbody)),
+  );
+}
+
+/** Champ de formulaire simple avec message d'erreur. */
+function formField(label, input, { required, hint, wide } = {}) {
+  const err = h('div', { class: 'err', hidden: true });
+  const el = h('div', { class: `field${wide ? ' wide' : ''}` }, h('label', {}, label, required ? h('span', { class: 'req' }, ' *') : null), hint ? h('div', { class: 'meta' }, hint) : null, input, err);
+  el.setError = (msg) => {
+    err.hidden = !msg;
+    err.textContent = msg || '';
+    el.classList.toggle('has-err', !!msg);
+  };
+  return el;
+}
+const selectOf = (options, value, empty = '—') => {
+  const s = h('select', {}, h('option', { value: '' }, empty), options.map((o) => (Array.isArray(o) ? h('option', { value: o[0] }, o[1]) : h('option', { value: o }, o))));
+  s.value = value || '';
+  return s;
+};
+
+function saveHandler(alert, fields, run) {
+  return async () => {
+    alert.hidden = true;
+    Object.values(fields).forEach((f) => f.setError(null));
+    try {
+      await run();
+    } catch (e) {
+      if (e.handled) return;
+      alert.hidden = false;
+      alert.textContent = e.message;
+      for (const [k, msg] of Object.entries(e.data?.errors || {})) fields[k]?.setError(msg);
+    }
+  };
+}
+
+function tiersModal(t) {
+  const d = t?.data || {};
+  const countries = [...(state.lists.LISTCOUNTRY?.keys() || [])].map((c) => c.replace('eba_GA:', '')).filter((c) => /^[A-Z]{2}$/.test(c));
+  const inputs = {
+    name: h('input', { value: d.name || '' }),
+    category: selectOf(TIERS_CATEGORIES, d.category),
+    idType: selectOf(ID_TYPES, d.idType),
+    identifier: h('input', { value: d.identifier || '', placeholder: 'SIREN, LEI, n° de TVA…' }),
+    country: selectOf(countries.map((c) => [c, `${countryName(c)} (${c})`]).sort((a, b) => a[1].localeCompare(b[1], 'fr')), d.country || (t ? '' : 'FR')),
+    group: h('input', { value: d.group || '', placeholder: 'Société mère ou groupe' }),
+    contactName: h('input', { value: d.contactName || '' }),
+    contactEmail: h('input', { type: 'email', value: d.contactEmail || '' }),
+    notes: h('textarea', { rows: 3 }, d.notes || ''),
+  };
+  const fields = {
+    name: formField('Nom du tiers', inputs.name, { required: true, wide: true }),
+    category: formField('Catégorie', inputs.category),
+    country: formField('Pays', inputs.country),
+    idType: formField('Type d’identifiant', inputs.idType),
+    identifier: formField('Identifiant', inputs.identifier),
+    group: formField('Groupe', inputs.group),
+    contactName: formField('Contact', inputs.contactName),
+    contactEmail: formField('E-mail du contact', inputs.contactEmail),
+    notes: formField('Notes', inputs.notes, { wide: true }),
+  };
+  const alert = h('div', { class: 'alert error', hidden: true });
+  const close = openModal({
+    title: t ? `Modifier ${d.name}` : 'Nouveau tiers',
+    body: [alert, h('div', { class: 'form-grid' }, Object.values(fields))],
+    footer: [
+      h('button', { class: 'btn', onclick: () => close() }, 'Annuler'),
+      h(
+        'button',
+        {
+          class: 'btn primary',
+          onclick: saveHandler(alert, fields, async () => {
+            const data = Object.fromEntries(Object.entries(inputs).map(([k, el]) => [k, el.value]));
+            const saved = t ? await api(`/api/tiers/${t.id}`, { method: 'PUT', body: { data } }) : await api('/api/tiers', { method: 'POST', body: { data } });
+            close();
+            toast(t ? 'Tiers enregistré' : 'Tiers créé');
+            location.hash = `#/tiers/${saved.id}`;
+            await reloadAndRender();
+          }),
+        },
+        t ? 'Enregistrer' : 'Créer le tiers',
+      ),
+    ],
+  });
+}
+
+function prestationModal(tiersId, p) {
+  const d = p?.data || {};
+  const entities = [...new Set([...(state.tables['b_01.02'] || []).map((r) => r.data['b_01.02.0020']), ...state.prestations.map((x) => x.data.entity)].filter(Boolean))].sort();
+  const contracts = [...new Set((state.tables['b_02.01'] || []).map((r) => r.data['b_02.01.0010']).filter(Boolean))].sort();
+  const entityList = h('datalist', { id: 'dl-entities' }, entities.map((e) => h('option', { value: e })));
+  const contractList = h('datalist', { id: 'dl-contracts' }, contracts.map((c) => h('option', { value: c })));
+  const inputs = {
+    title: h('input', { value: d.title || '', placeholder: 'Ex. Hébergement du site bancaire' }),
+    domain: selectOf(PRESTATION_DOMAINS, d.domain),
+    entity: h('input', { value: d.entity || '', list: 'dl-entities', placeholder: 'Entité qui bénéficie de la prestation' }),
+    owner: h('input', { value: d.owner || '', placeholder: 'Direction ou personne responsable' }),
+    status: selectOf(STATUSES.map((s) => [s.code, s.label]), d.status || 'active'),
+    start: h('input', { type: 'date', value: d.start || '' }),
+    end: h('input', { type: 'date', value: d.end || '' }),
+    annualCost: h('input', { inputmode: 'decimal', value: d.annualCost || '', placeholder: 'en euros' }),
+    nextReview: h('input', { type: 'date', value: d.nextReview || '' }),
+    description: h('textarea', { rows: 2 }, d.description || ''),
+  };
+  inputs.status.querySelector('option[value=""]')?.remove();
+  const fields = {
+    title: formField('Intitulé', inputs.title, { required: true, wide: true }),
+    domain: formField('Domaine', inputs.domain),
+    entity: formField('Entité bénéficiaire', inputs.entity),
+    owner: formField('Responsable interne', inputs.owner),
+    status: formField('Statut', inputs.status),
+    start: formField('Début', inputs.start),
+    end: formField('Fin', inputs.end, { hint: 'Laisser vide si sans échéance' }),
+    annualCost: formField('Coût annuel', inputs.annualCost),
+    nextReview: formField('Prochaine revue', inputs.nextReview),
+    description: formField('Description', inputs.description, { wide: true }),
+  };
+  const doraContract = h('input', { value: d.doraContract || '', list: 'dl-contracts', placeholder: 'Référence de l’accord (b_02.01)' });
+  const quals = {};
+  const qCards = QUALIFICATIONS.map((q) => {
+    const cur = d.qualifications?.[q.code];
+    const on = h('input', { type: 'checkbox', checked: !!cur });
+    const critical = q.criticalLabel ? h('input', { type: 'checkbox', checked: !!cur?.critical }) : null;
+    const note = h('textarea', { rows: 2, placeholder: 'Justification (facultatif)' }, cur?.note || '');
+    const details = h(
+      'div',
+      { class: 'qcard-details' },
+      critical ? h('label', { class: 'small' }, critical, ' ', q.criticalLabel) : null,
+      q.code === 'DORA' ? h('div', { class: 'field' }, h('label', { class: 'small' }, 'Contrat du registre DORA'), doraContract) : null,
+      note,
+    );
+    const card = h('div', { class: `qcard q-${q.color}` }, h('label', { class: 'qcard-head' }, on, h('div', {}, h('b', {}, q.name), h('div', { class: 'muted small' }, q.desc))), details);
+    const sync = () => {
+      card.classList.toggle('on', on.checked);
+      details.hidden = !on.checked;
+    };
+    on.addEventListener('change', sync);
+    sync();
+    quals[q.code] = { on, critical, note };
+    return card;
+  });
+  const alert = h('div', { class: 'alert error', hidden: true });
+  const tiersName = tiersById(tiersId)?.data.name || '';
+  const close = openModal({
+    title: p ? `Modifier la prestation` : `Nouvelle prestation · ${tiersName}`,
+    body: [
+      alert,
+      entityList,
+      contractList,
+      h('div', { class: 'form-grid' }, Object.values(fields)),
+      h('h3', { class: 'form-title' }, 'Qualifications réglementaires'),
+      h('p', { class: 'muted small' }, 'Cochez toutes les qualifications qui s’appliquent : une même prestation peut en cumuler plusieurs.'),
+      h('div', { class: 'qcards' }, qCards),
+    ],
+    footer: [
+      h('button', { class: 'btn', onclick: () => close() }, 'Annuler'),
+      h(
+        'button',
+        {
+          class: 'btn primary',
+          onclick: saveHandler(alert, fields, async () => {
+            const data = Object.fromEntries(Object.entries(inputs).map(([k, el]) => [k, el.value]));
+            data.qualifications = {};
+            for (const [code, q] of Object.entries(quals)) {
+              if (q.on.checked) data.qualifications[code] = { critical: !!q.critical?.checked, note: q.note.value };
+            }
+            data.doraContract = quals.DORA.on.checked ? doraContract.value : '';
+            if (p) await api(`/api/prestations/${p.id}`, { method: 'PUT', body: { data } });
+            else await api('/api/prestations', { method: 'POST', body: { tiersId, data } });
+            close();
+            toast('Prestation enregistrée');
+            await reloadAndRender();
+          }),
+        },
+        p ? 'Enregistrer' : 'Ajouter la prestation',
+      ),
+    ],
+  });
 }
 
 // ---------------------------------------------------------------------------------------

@@ -63,6 +63,10 @@ export function loadUser(db, row) {
     .prepare('SELECT provider_id FROM user_providers WHERE user_id = ? ORDER BY provider_id')
     .all(row.id)
     .map((r) => r.provider_id);
+  const tiersIds = db
+    .prepare('SELECT tiers_id FROM user_tiers WHERE user_id = ? ORDER BY tiers_id')
+    .all(row.id)
+    .map((r) => r.tiers_id);
   return {
     id: row.id,
     username: row.username,
@@ -70,6 +74,7 @@ export function loadUser(db, row) {
     role: row.role,
     roleLabel: ROLES[row.role],
     providerIds,
+    tiersIds,
   };
 }
 
