@@ -698,7 +698,7 @@ function buildFields(table, data, { readOnly = false, skip = [], locked = [] } =
       const listId = `${id}-dl`;
       let options = [];
       if (col.ref) options = refOptions(col);
-      else if (col.kind === 'codeType') options = ['LEI', 'FR_CRN', 'FR_VAT', 'DE_VAT', 'LU_CRN', 'IE_CRN', 'US_CRN'].map((x) => [x, null]).concat(col.code === 'b_05.02.0070' ? [['Not applicable', 'rang 1']] : []);
+      else if (col.kind === 'codeType') options = ['LEI', 'EUID', 'FR_CRN', 'FR_VAT', 'DE_VAT', 'LU_CRN', 'IE_CRN', 'US_CRN'].map((x) => [x, null]).concat(col.code === 'b_05.02.0070' ? [['Not applicable', 'rang 1']] : []);
       else if (col.code === 'b_05.02.0060') options = [['Not applicable', 'rang 1'], ...refOptions({ ref: { table: 'b_05.01', column: 'b_05.01.0010' } })];
       input = h('input', { id, value: v, disabled, list: options.length ? listId : null, autocomplete: 'off', spellcheck: 'false' });
       if (options.length) nodes.push(h('datalist', { id: listId }, options.map(([val, label]) => h('option', { value: val }, label || val))));
@@ -1011,7 +1011,7 @@ function exchangeView() {
         h('h2', {}, 'Importer un registre'),
         canImp
           ? [
-              h('p', {}, 'Importez un classeur .xlsx au format du template (par exemple le template EBA rempli puis enregistré au format .xlsx, ou un export de cette application). Les listes de valeurs acceptent le code EBA ou le libellé.'),
+              h('p', {}, 'Importez un classeur .xlsx au format du template (par exemple le template EBA rempli puis enregistré au format .xlsx, ou un export de cette application) ou au format de remise EBA (onglets b_01_02, b_05_01… avec les codes c0010, c0020… en première ligne). Les listes de valeurs acceptent le code EBA ou le libellé.'),
               h('div', { class: 'field' }, h('label', {}, 'Fichier'), file),
               h('div', { class: 'field', style: 'margin-top:12px' }, h('label', {}, 'Mode'), mode),
               h('p', {}, h('button', { class: 'btn primary', onclick: doImport }, 'Importer')),

@@ -126,6 +126,11 @@ function buildSchema() {
       items.map((it) => (VALUES_FR[it.code] ? { ...it, fr: VALUES_FR[it.code] } : it)),
     ]),
   );
+  // Le format de remise EBA (DPM 4.0) ajoute « Non applicable » aux listes de pays
+  // (pays de prestation ou de stockage des données quand il n'y en a pas).
+  if (lists.LISTCOUNTRY && !lists.LISTCOUNTRY.some((it) => it.code === 'eba_GA:qx2007')) {
+    lists.LISTCOUNTRY.push({ code: 'eba_GA:qx2007', label: 'Not applicable', fr: 'Non applicable' });
+  }
   return { source: raw.source, tables, lists };
 }
 

@@ -39,12 +39,16 @@ lisible par tous pour permettre la saisie. Tous les exports respectent ce périm
 - **Fiche prestataire** consolidée (b_05.01 + accords + évaluations + chaîne d'approvisionnement) et
   assistant de création d'un accord (b_02.01 + b_02.02 en une fois).
 - **Contrôles** : formats (LEI avec clé ISO 17442, dates ISO 8601, entiers, montants, `LEI` /
-  `PAYS_TYPE`, `Fn`), champs obligatoires et conditionnels du template, références entre tableaux,
+  `EUID`, `PAYS_TYPE`, `Fn`), champs obligatoires et conditionnels du template, références entre tableaux,
   cohérence du type de code avec b_05.01, doublons de clé.
 - **Export Excel au format du template** : un onglet par tableau, codes colonnes en ligne 4, libellés
   en ligne 5, types en ligne 6, données à partir de la ligne 7, valeurs codées EBA (`eba_GA:FR`…),
   onglet « Drop down » et listes déroulantes de validation.
-- **Import Excel** (.xlsx au même format, en ajout ou en remplacement ; libellés ou codes acceptés).
+- **Import Excel** (.xlsx, en ajout ou en remplacement ; libellés ou codes acceptés) au format du template
+  ou au **format de remise EBA** (DPM 4.0 : onglets `b_05_01`, codes `c0010` en ligne 1, types de code
+  `eba_qCO:qx2000`…). Pour ce dernier, les colonnes de b_05.01 sont réalignées sur le template
+  (le code complémentaire et le nom en alphabet latin ne sont pas repris) et les types de code sont
+  convertis en `LEI`, `EUID` ou `PAYS_TYPE` (pays du siège du prestataire).
 - **Journal d'audit** des connexions, créations, modifications (avant/après), suppressions, imports et
   exports.
 

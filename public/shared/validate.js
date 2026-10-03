@@ -18,7 +18,7 @@ export function isValidLei(value) {
   return rest === 1;
 }
 
-export const CODE_TYPE_RE = /^(LEI|[A-Z]{2}_(CRN|VAT|PNR|NIN))$/;
+export const CODE_TYPE_RE = /^(LEI|EUID|[A-Z]{2}_(CRN|VAT|PNR|NIN))$/;
 export const FUNCTION_RE = /^F[0-9]+$/;
 
 export function isValidDate(value) {
@@ -48,7 +48,7 @@ export function checkValue(schema, col, value, row = {}) {
       return FUNCTION_RE.test(v) ? null : 'Format attendu : F suivi d’un nombre (ex. F1)';
     case 'codeType':
       if (col.code === 'b_05.02.0070' && v === 'Not applicable') return null;
-      return CODE_TYPE_RE.test(v) ? null : 'Format attendu : LEI ou PAYS_TYPE (ex. FR_CRN, DE_VAT)';
+      return CODE_TYPE_RE.test(v) ? null : 'Format attendu : LEI, EUID ou PAYS_TYPE (ex. FR_CRN, DE_VAT)';
     case 'lei':
       return isValidLei(String(v)) ? null : 'LEI invalide (20 caractères, clé ISO 17442)';
     case 'text': {
