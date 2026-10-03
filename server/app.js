@@ -311,7 +311,7 @@ export function createApp(db, { secureCookies = false } = {}) {
     try {
       parsed = await importWorkbook(buf);
     } catch {
-      fail(400, 'Fichier illisible : un classeur Excel .xlsx au format du template est attendu');
+      fail(400, 'Fichier illisible : un classeur Excel .xlsx au format du template ou de remise EBA est attendu');
     }
     const summary = {};
     tx(db, () => {

@@ -43,7 +43,7 @@ export function runChecks(records, reference = records) {
     for (const col of table.columns) {
       const ref = REFS[col.code];
       const v = d[col.code];
-      if (!ref || isEmpty(v) || has(ref.column, v)) continue;
+      if (!ref || isEmpty(v) || v === 'Not applicable' || has(ref.column, v)) continue;
       issues.push(issue(r, col.code, 'erreur', `« ${v} » est absent du tableau ${ref.table} (${ref.column})`));
     }
 

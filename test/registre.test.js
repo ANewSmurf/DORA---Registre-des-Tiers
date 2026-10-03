@@ -8,6 +8,7 @@ import { seedDemo, DEMO_PASSWORD, makeLei } from '../server/seed.js';
 import { schema, tableByCode } from '../server/schema.js';
 import { isValidLei, checkValue } from '../public/shared/validate.js';
 import { importWorkbook } from '../server/xlsx.js';
+import ExcelJS from 'exceljs';
 
 let server;
 let base;
@@ -179,6 +180,43 @@ test('administrateur global : utilisateurs, contrôles, export puis import', asy
   for (const t of schema.tables) assert.equal(after[t.code].length, before[t.code].length, t.code);
   const tiers = await login('lecteur.tiers');
   assert.equal(count(await tiers('/api/register'), 'b_05.01'), 1);
+});
+
+test('import au format de remise EBA (onglets b_xx_xx, codes c0010 en ligne 1)', async () => {
+  const wb = new ExcelJS.Workbook();
+  const sheet = (name, header, rows) => {
+    const ws = wb.addWorksheet(name);
+    ws.addRow(header);
+    rows.forEach((r) => ws.addRow(r));
+  };
+  const lei = makeLei('969500PRESTATAIRE1');
+  sheet('RECAPITULATIF', ['Tableau', 'Lignes'], [['b_05_01', 2]]);
+  sheet(
+    'b_05_01',
+    ['c0010', 'c0020', 'c0030', 'c0040', 'c0050', 'c0060', 'c0070', 'c0080', 'c0090', 'c0100', 'c0110', 'c0120'],
+    [
+      [lei, 'eba_qCO:qx2000', null, null, 'Presta LEI', 'Presta LEI', 'eba_CT:x212', 'eba_GA:FR', 'eba_CU:EUR', 1200.5, null, null],
+      [552100554, 'eba_qCO:qx2003', 'FR62552100554', 'eba_qCO:qx2004', 'Presta SIREN', 'Presta SIREN', 'eba_CT:x212', 'eba_GA:BE', 'eba_CU:EUR', 300, lei, 'eba_qCO:qx2000'],
+    ],
+  );
+  sheet('b_03_02', ['c0010', 'c0020', 'c0030'], [['CTR-1', 552100554, 'eba_qCO:qx2003']]);
+  sheet('b_02_02', ['c0010', 'c0130', 'c0150', 'c0070'], [['CTR-1', 'eba_GA:qx2007', 'eba_GA:FR', new Date(Date.UTC(2024, 0, 31))]]);
+  const { tables, warnings } = await importWorkbook(await wb.xlsx.writeBuffer());
+
+  const [p1, p2] = tables['b_05.01'];
+  assert.deepEqual(
+    [p1['b_05.01.0020'], p1['b_05.01.0030'], p1['b_05.01.0050'], p1['b_05.01.0070']],
+    ['LEI', 'Presta LEI', 'eba_GA:FR', '1200.5'],
+  );
+  assert.deepEqual(
+    [p2['b_05.01.0010'], p2['b_05.01.0020'], p2['b_05.01.0080'], p2['b_05.01.0090']],
+    ['552100554', 'BE_CRN', lei, 'LEI'],
+  );
+  assert.deepEqual(tables['b_03.02'][0], { 'b_03.02.0010': 'CTR-1', 'b_03.02.0020': '552100554', 'b_03.02.0030': 'BE_CRN', 'b_03.02.0045': 'true' });
+  assert.equal(tables['b_02.02'][0]['b_02.02.0070'], '2024-01-31');
+  assert.equal(checkValue(schema, tableByCode['b_02.02'].columns.find((c) => c.code === 'b_02.02.0130'), 'eba_GA:qx2007'), null);
+  assert.ok(warnings.some((w) => /c0030/.test(w)));
+  assert.ok(warnings.some((w) => /RECAPITULATIF/.test(w)));
 });
 
 test('les requêtes de modification sans en-tête applicatif sont refusées (CSRF)', async () => {
